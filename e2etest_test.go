@@ -8,7 +8,7 @@ import (
 )
 
 func TestE2EExampleTest(t *testing.T) {
-	output := RunE2ETest(t, NewTestFolder("./", "example/basic"), terraform.Options{
+	output := RunE2ETest(t, "./", "example/basic", terraform.Options{
 		Upgrade: true,
 	})
 	resId, ok := output["resource_id"].(string)
