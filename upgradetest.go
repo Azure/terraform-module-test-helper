@@ -18,6 +18,14 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+func GetCurrentModuleRootPath() (string, error) {
+	current, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(filepath.Join(current, "..", "..")), nil
+}
+
 //goland:noinspection GoUnusedExportedFunction
 func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
 	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, opts, currentMajorVer)
