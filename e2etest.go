@@ -9,10 +9,12 @@ import (
 
 type TerraformOutput = map[string]interface{}
 
-func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options) TerraformOutput {
+func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	option.TerraformDir = tmpDir
 	defer terraform.Destroy(t, &option)
 	terraform.InitAndApplyAndIdempotent(t, &option)
-	return terraform.OutputAll(t, &option)
+	if assertion != nil {
+		assertion(t, terraform.OutputAll(t, &option))
+	}
 }

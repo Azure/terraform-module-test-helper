@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"text/template"
@@ -132,4 +133,16 @@ func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 		currentMajor := fmt.Sprintf("v%d", majorVersion)
 		return major == currentMajor
 	}
+}
+
+func GetCurrentMajorVersionFromEnv() string {
+	currentMajorVer := os.Getenv("PREVIOUS_MAJOR_VERSION")
+	if currentMajorVer == "" {
+		return "v0"
+	}
+	previousMajorVer, err := strconv.Atoi(strings.TrimPrefix(currentMajorVer, "v"))
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("v%d", previousMajorVer+1)
 }

@@ -41,3 +41,14 @@ func TestSkipIfNoTagsWithinMajorVersion(t *testing.T) {
 	_, err := getLatestTag("hashicorp", "terraform", 100)
 	assert.Equal(t, SkipError, err)
 }
+
+func TestGetCurrentMajorVersionFromEnv_default(t *testing.T) {
+	majorVersionFromEnv := GetCurrentMajorVersionFromEnv()
+	assert.Equal(t, "v0", majorVersionFromEnv)
+}
+
+func TestGetCurrentMajorVersionFromEnv_basic(t *testing.T) {
+	os.Setenv("PREVIOUS_MAJOR_VERSION", "v0")
+	majorVersionFromEnv := GetCurrentMajorVersionFromEnv()
+	assert.Equal(t, "v1", majorVersionFromEnv)
+}
