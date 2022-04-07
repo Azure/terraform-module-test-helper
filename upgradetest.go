@@ -135,14 +135,14 @@ func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 	}
 }
 
-func GetCurrentMajorVersionFromEnv() string {
+func GetCurrentMajorVersionFromEnv() (int, error) {
 	currentMajorVer := os.Getenv("PREVIOUS_MAJOR_VERSION")
 	if currentMajorVer == "" {
-		return "v0"
+		return 0, nil
 	}
 	previousMajorVer, err := strconv.Atoi(strings.TrimPrefix(currentMajorVer, "v"))
 	if err != nil {
-		return ""
+		return 0, err
 	}
-	return fmt.Sprintf("v%d", previousMajorVer+1)
+	return previousMajorVer + 1, nil
 }
