@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"context"
 	"fmt"
+	"github.com/gruntwork-io/terratest/modules/files"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,12 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 		return err
 	}
 
+	fullTerraformModuleFolder := filepath.Join(tmpDirForTag, moduleFolderRelativeToRoot)
+
+	exists := files.FileExists(fullTerraformModuleFolder)
+	if !exists {
+		return SkipError
+	}
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
 	opts.TerraformDir = tmpDir
 	defer terraform.Destroy(t, &opts)
@@ -93,7 +100,7 @@ var getTagCode = func(owner string, repo string, latestTag string) (string, erro
 	return tmpDirForTag, nil
 }
 
-var SkipError = fmt.Errorf("no previous tag yet, skip upgrade test")
+var SkipError = fmt.Errorf("no previous tag yet or previous tag's folder structure is different than the current version, skip upgrade test")
 
 var getLatestTag = func(owner string, repo string, currentMajorVer int) (string, error) {
 	client := github.NewClient(nil)
