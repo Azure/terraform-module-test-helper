@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-github/v42/github"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/prashantv/gostub"
 	"github.com/stretchr/testify/assert"
@@ -53,4 +54,17 @@ func TestGetCurrentMajorVersionFromEnv_basic(t *testing.T) {
 	majorVersionFromEnv, err := GetCurrentMajorVersionFromEnv()
 	assert.Nil(t, err)
 	assert.Equal(t, 1, majorVersionFromEnv)
+}
+
+func TestTagWithAlphaSuffixt(t *testing.T) {
+	alpha := "v0.1.0-alpha"
+	current := "0.1.1"
+	alphaTag := &github.RepositoryTag{
+		Name: &alpha,
+	}
+	currentTag := &github.RepositoryTag{
+		Name: &current,
+	}
+	sort := semanticSort(alphaTag, currentTag)
+	assert.False(t, sort)
 }

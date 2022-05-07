@@ -124,7 +124,11 @@ func valid(t interface{}) bool {
 func semanticSort(i, j interface{}) bool {
 	it := i.(*github.RepositoryTag)
 	jt := j.(*github.RepositoryTag)
-	return semver.Compare(it.GetName(), jt.GetName()) > 0
+	return semver.Compare(sterilize(it.GetName()), sterilize(jt.GetName())) > 0
+}
+
+func sterilize(v string) string {
+	return strings.TrimPrefix(v, "v")
 }
 
 func sameMajorVersion(majorVersion int) func(i interface{}) bool {
