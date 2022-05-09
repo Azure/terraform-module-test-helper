@@ -83,10 +83,10 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	opts.TerraformDir = originTerraformDir
 	defer terraform.Destroy(t, &opts)
 	terraform.InitAndApplyAndIdempotent(t, &opts)
-	opts.PlanFilePath = filepath.Join(originTerraformDir, "tf.plan")
-	terraform.Plan(t, &opts)
+
 	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
 
+	opts.PlanFilePath = filepath.Join(originTerraformDir, "tf.plan")
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
 
