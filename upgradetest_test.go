@@ -1,6 +1,7 @@
 package terraform_module_test_helper
 
 import (
+	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"os"
 	"strings"
 	"testing"
@@ -112,4 +113,20 @@ func TestNoValidVersion(t *testing.T) {
 	}
 	first := latestTagWithinMajorVersion(tags, 0)
 	assert.Nil(t, first)
+}
+
+func TestDetectPlanDiff(t *testing.T) {
+	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{
+		Upgrade: true,
+	}, 0)
+	assert.NotEqual(t, SkipError, err)
+	assert.NotNil(t, err)
+}
+
+func TestAddNewOutputShouldNotFailTheTest(t *testing.T) {
+	tmpDir := test_structure.CopyTerraformFolderToTemp(t, "./example/output_upgrade", "test")
+	err := diffTwoVersions(t, terraform.Options{
+		Upgrade: true,
+	}, tmpDir, "../after")
+	assert.Nil(t, err)
 }

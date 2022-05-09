@@ -1,0 +1,3 @@
+module "test" {
+  source = "{{env "MODULE_SOURCE" |  default "../before/"}}"
+}

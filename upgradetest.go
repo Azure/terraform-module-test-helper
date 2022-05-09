@@ -3,7 +3,6 @@ package terraform_module_test_helper
 import (
 	"context"
 	"fmt"
-	"github.com/gruntwork-io/terratest/modules/files"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/google/go-github/v42/github"
+	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/hashicorp/go-getter"
@@ -59,7 +59,7 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	}
 }
 
-func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelativeToRoot string, currentModulePath string, opts terraform.Options, currentMajorVer int) error {
+func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
 	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
 	if err != nil {
 		return err
@@ -75,14 +75,22 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 	if !exists {
 		return SkipError
 	}
-	tmpDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
-	opts.TerraformDir = tmpDir
-	defer terraform.Destroy(t, &opts)
+	tmpTestDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
+	return diffTwoVersions(t, opts, tmpTestDir, newModulePath)
+}
 
+func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir string, newModulePath string) error {
+	opts.TerraformDir = originTerraformDir
+	defer terraform.Destroy(t, &opts)
 	terraform.InitAndApplyAndIdempotent(t, &opts)
-	overrideModuleSourceToCurrentPath(t, tmpDir, currentModulePath)
-	code := terraform.InitAndPlanWithExitCode(t, &opts)
-	if code != 0 {
+	opts.PlanFilePath = filepath.Join(originTerraformDir, "tf.plan")
+	terraform.Plan(t, &opts)
+	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
+
+	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
+	changes := plan.ResourceChangesMap
+
+	if len(changes) > 0 {
 		return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
 	}
 	return nil
