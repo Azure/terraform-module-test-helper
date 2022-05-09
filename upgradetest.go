@@ -87,13 +87,13 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
 
 	opts.PlanFilePath = filepath.Join(originTerraformDir, "tf.plan")
+	exitCode := terraform.InitAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
-
-	if len(changes) > 0 {
-		return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
+	if exitCode == 0 || len(changes) == 0 {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
 }
 
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
