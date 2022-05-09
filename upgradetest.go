@@ -20,6 +20,26 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+type repositoryTag struct {
+	*github.RepositoryTag
+	version string
+}
+
+func wrapRepositoryTag(t *github.RepositoryTag) repositoryTag {
+	return repositoryTag{
+		RepositoryTag: t,
+		version:       sterilize(t.GetName()),
+	}
+}
+
+func wrap(t interface{}) interface{} {
+	return wrapRepositoryTag(t.(*github.RepositoryTag))
+}
+
+func unwrap(t interface{}) interface{} {
+	return t.(repositoryTag).RepositoryTag
+}
+
 func GetCurrentModuleRootPath() (string, error) {
 	current, err := os.Getwd()
 	if err != nil {
@@ -111,36 +131,51 @@ var getLatestTag = func(owner string, repo string, currentMajorVer int) (string,
 	if tags == nil {
 		return "", fmt.Errorf("cannot find tags")
 	}
-	first := linq.From(tags).Where(valid).Sort(semanticSort).Where(sameMajorVersion(currentMajorVer)).First()
+	first := latestTagWithinMajorVersion(tags, currentMajorVer)
 	if first == nil {
 		return "", SkipError
 	}
-	latestTag := first.(*github.RepositoryTag).GetName()
+	latestTag := first.GetName()
 	return latestTag, nil
+}
+
+func latestTagWithinMajorVersion(tags []*github.RepositoryTag, currentMajorVer int) *github.RepositoryTag {
+	t := linq.From(tags).Where(notNil).Select(wrap).Where(valid).Sort(semanticSort).Where(sameMajorVersion(currentMajorVer)).Select(unwrap).First()
+	if t == nil {
+		return nil
+	}
+	return t.(*github.RepositoryTag)
+}
+
+func notNil(i interface{}) bool {
+	return i != nil
 }
 
 func valid(t interface{}) bool {
 	if t == nil {
 		return false
 	}
-	tag := t.(*github.RepositoryTag)
-	v := tag.GetName()
+	tag := t.(repositoryTag)
+	v := tag.version
 	return semver.IsValid(v) && !strings.Contains(v, "rc")
 }
 
 func semanticSort(i, j interface{}) bool {
-	it := i.(*github.RepositoryTag)
-	jt := j.(*github.RepositoryTag)
-	return semver.Compare(sterilize(it.GetName()), sterilize(jt.GetName())) > 0
+	it := i.(repositoryTag)
+	jt := j.(repositoryTag)
+	return semver.Compare(it.version, jt.version) > 0
 }
 
 func sterilize(v string) string {
-	return strings.TrimPrefix(v, "v")
+	if !strings.HasPrefix(v, "v") {
+		return fmt.Sprintf("v%s", v)
+	}
+	return v
 }
 
 func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 	return func(i interface{}) bool {
-		major := semver.Major(i.(*github.RepositoryTag).GetName())
+		major := semver.Major(i.(repositoryTag).version)
 		currentMajor := fmt.Sprintf("v%d", majorVersion)
 		return major == currentMajor
 	}

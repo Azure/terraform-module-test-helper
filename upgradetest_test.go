@@ -56,7 +56,7 @@ func TestGetCurrentMajorVersionFromEnv_basic(t *testing.T) {
 	assert.Equal(t, 1, majorVersionFromEnv)
 }
 
-func TestTagWithAlphaSuffixt(t *testing.T) {
+func TestTagWithAlphaSuffix(t *testing.T) {
 	alpha := "v0.1.0-alpha"
 	current := "0.1.1"
 	alphaTag := &github.RepositoryTag{
@@ -65,6 +65,51 @@ func TestTagWithAlphaSuffixt(t *testing.T) {
 	currentTag := &github.RepositoryTag{
 		Name: &current,
 	}
-	sort := semanticSort(alphaTag, currentTag)
+	sort := semanticSort(wrap(alphaTag), wrap(currentTag))
 	assert.False(t, sort)
+}
+
+func TestLatestTagWithAlphaSuffix(t *testing.T) {
+	alphaVersion := "v0.1.0-alpha"
+	latestVersion := "0.1.2"
+	tags := []*github.RepositoryTag{
+		{
+			Name: &alphaVersion,
+		},
+		{
+			Name: &latestVersion,
+		},
+	}
+	first := latestTagWithinMajorVersion(tags, 0)
+	assert.Equal(t, latestVersion, first.GetName())
+}
+
+func TestLatestTag(t *testing.T) {
+	alphaVersion := "0.1.0"
+	latestVersion := "0.1.2"
+	tags := []*github.RepositoryTag{
+		{
+			Name: &alphaVersion,
+		},
+		{
+			Name: &latestVersion,
+		},
+	}
+	first := latestTagWithinMajorVersion(tags, 0)
+	assert.Equal(t, latestVersion, first.GetName())
+}
+
+func TestNoValidVersion(t *testing.T) {
+	v1 := "a.b.c"
+	v2 := "e.f.g"
+	tags := []*github.RepositoryTag{
+		{
+			Name: &v1,
+		},
+		{
+			Name: &v2,
+		},
+	}
+	first := latestTagWithinMajorVersion(tags, 0)
+	assert.Nil(t, first)
 }
