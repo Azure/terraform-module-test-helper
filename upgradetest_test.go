@@ -130,3 +130,11 @@ func TestAddNewOutputShouldNotFailTheTest(t *testing.T) {
 	}, tmpDir, "../after")
 	assert.Nil(t, err)
 }
+
+func TestNoChange(t *testing.T) {
+	tmpDir := test_structure.CopyTerraformFolderToTemp(t, "./example/output_upgrade", "test")
+	err := diffTwoVersions(t, terraform.Options{
+		Upgrade: true,
+	}, tmpDir, "../before")
+	assert.Nil(t, err)
+}

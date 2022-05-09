@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -90,10 +91,28 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	exitCode := terraform.InitAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
-	if exitCode == 0 || len(changes) == 0 {
+	if exitCode == 0 || noChanges(changes) {
 		return nil
 	}
 	return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
+}
+
+func noChanges(changes map[string]*tfjson.ResourceChange) bool {
+	if len(changes) == 0 {
+		return true
+	}
+	return linq.From(changes).Select(func(i interface{}) interface{} {
+		return i.(linq.KeyValue).Value
+	}).All(func(i interface{}) bool {
+		change := i.(*tfjson.ResourceChange).Change
+		if change == nil {
+			return true
+		}
+		if change.Actions == nil {
+			return true
+		}
+		return change.Actions.NoOp()
+	})
 }
 
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {

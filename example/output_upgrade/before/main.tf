@@ -1,9 +1,15 @@
+resource "random_pet" "pet" {}
+resource "random_integer" "number" {
+  max = 10
+  min = 0
+}
+
 output "id" {
-  value = 1
+  value = random_integer.number.result
 }
 
 output "complete" {
   value = {
-    id = 1
+    id = random_integer.number.result
   }
 }
