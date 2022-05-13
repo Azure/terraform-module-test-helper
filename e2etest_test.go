@@ -16,3 +16,13 @@ func TestE2EExampleTest(t *testing.T) {
 		assert.NotEqual(t, "", resId, "expected output `resource_id`")
 	})
 }
+
+func TestE2ETestRenderOverrideFile(t *testing.T) {
+	RunE2ETest(t, "./", "example/override", terraform.Options{
+		Upgrade: true,
+	}, func(t *testing.T, output TerraformOutput) {
+		id, ok := output["id"].(string)
+		assert.True(t, ok)
+		assert.Equal(t, "override_output_id", id, "expected output `override_output_id`")
+	})
+}

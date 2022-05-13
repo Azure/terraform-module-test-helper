@@ -11,6 +11,10 @@ type TerraformOutput = map[string]interface{}
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
+	err := renderOverrideFile(tmpDir)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	option.TerraformDir = tmpDir
 	defer terraform.Destroy(t, &option)
 	terraform.InitAndApplyAndIdempotent(t, &option)

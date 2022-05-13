@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-json"
 	"os"
@@ -21,32 +22,11 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var SkipError = fmt.Errorf("no previous tag yet or previous tag's folder structure is different than the current version, skip upgrade test")
+
 type repositoryTag struct {
 	*github.RepositoryTag
 	version string
-}
-
-func wrapRepositoryTag(t *github.RepositoryTag) repositoryTag {
-	return repositoryTag{
-		RepositoryTag: t,
-		version:       sterilize(t.GetName()),
-	}
-}
-
-func wrap(t interface{}) interface{} {
-	return wrapRepositoryTag(t.(*github.RepositoryTag))
-}
-
-func unwrap(t interface{}) interface{} {
-	return t.(repositoryTag).RepositoryTag
-}
-
-func GetCurrentModuleRootPath() (string, error) {
-	current, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.ToSlash(filepath.Join(current, "..", "..")), nil
 }
 
 //goland:noinspection GoUnusedExportedFunction
@@ -58,6 +38,38 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+}
+
+func GetCurrentModuleRootPath() (string, error) {
+	current, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(filepath.Join(current, "..", "..")), nil
+}
+
+func GetCurrentMajorVersionFromEnv() (int, error) {
+	currentMajorVer := os.Getenv("PREVIOUS_MAJOR_VERSION")
+	if currentMajorVer == "" {
+		return 0, nil
+	}
+	previousMajorVer, err := strconv.Atoi(strings.TrimPrefix(currentMajorVer, "v"))
+	if err != nil {
+		return 0, err
+	}
+	return previousMajorVer + 1, nil
+}
+
+func wrap(t interface{}) interface{} {
+	tag := t.(*github.RepositoryTag)
+	return repositoryTag{
+		RepositoryTag: tag,
+		version:       sterilize(tag.GetName()),
+	}
+}
+
+func unwrap(t interface{}) interface{} {
+	return t.(repositoryTag).RepositoryTag
 }
 
 func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
@@ -118,24 +130,36 @@ func noChanges(changes map[string]*tfjson.ResourceChange) bool {
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
 	//goland:noinspection GoUnhandledErrorResult
 	os.Setenv("MODULE_SOURCE", currentModulePath)
-	tplt := template.Must(template.New("override.tf.tplt").Funcs(sprig.TxtFuncMap()).ParseFiles(filepath.Join(moduleDir, "override.tf.tplt")))
+	err := renderOverrideFile(moduleDir)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func renderOverrideFile(moduleDir string) error {
+	templatePath := filepath.Join(moduleDir, "override.tf.tplt")
+	if _, err := os.Stat(templatePath); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	tplt := template.Must(template.New("override.tf.tplt").Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath))
 	dstOverrideTf := filepath.Join(moduleDir, "override.tf")
 	if _, err := os.Stat(dstOverrideTf); err == nil {
 		err = os.Remove(dstOverrideTf)
 		if err != nil {
-			t.Errorf("cannot delete dst override file:%s", err.Error())
+			return fmt.Errorf("cannot delete dst override file:%s", err.Error())
 		}
 	}
 	dstFs, err := os.Create(dstOverrideTf)
 	if err != nil {
-		t.Errorf("cannot create dst override file:%s", err.Error())
+		return fmt.Errorf("cannot create dst override file:%s", err.Error())
 	}
 	//goland:noinspection GoUnhandledErrorResult
 	defer dstFs.Close()
 	err = tplt.Execute(dstFs, err)
 	if err != nil {
-		t.Errorf("cannot write override.tf for %s:%s", dstOverrideTf, err.Error())
+		return fmt.Errorf("cannot write override.tf for %s:%s", dstOverrideTf, err.Error())
 	}
+	return nil
 }
 
 var getTagCode = func(owner string, repo string, latestTag string) (string, error) {
@@ -146,8 +170,6 @@ var getTagCode = func(owner string, repo string, latestTag string) (string, erro
 	}
 	return tmpDirForTag, nil
 }
-
-var SkipError = fmt.Errorf("no previous tag yet or previous tag's folder structure is different than the current version, skip upgrade test")
 
 var getLatestTag = func(owner string, repo string, currentMajorVer int) (string, error) {
 	client := github.NewClient(nil)
@@ -206,16 +228,4 @@ func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 		currentMajor := fmt.Sprintf("v%d", majorVersion)
 		return major == currentMajor
 	}
-}
-
-func GetCurrentMajorVersionFromEnv() (int, error) {
-	currentMajorVer := os.Getenv("PREVIOUS_MAJOR_VERSION")
-	if currentMajorVer == "" {
-		return 0, nil
-	}
-	previousMajorVer, err := strconv.Atoi(strings.TrimPrefix(currentMajorVer, "v"))
-	if err != nil {
-		return 0, err
-	}
-	return previousMajorVer + 1, nil
 }
