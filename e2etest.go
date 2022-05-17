@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"testing"
 
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -19,6 +20,12 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	defer terraform.Destroy(t, &option)
 	terraform.InitAndApplyAndIdempotent(t, &option)
 	if assertion != nil {
-		assertion(t, terraform.OutputAll(t, &option))
+		noLoggerOption, err := option.Clone()
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		// default logger might leak sensitive data
+		noLoggerOption.Logger = logger.Discard
+		assertion(t, terraform.OutputAll(t, noLoggerOption))
 	}
 }
