@@ -15,6 +15,23 @@ import (
 
 func TestModuleUpgradeTest(t *testing.T) {
 	stub := gostub.Stub(&getLatestTag, func(owner string, repo string, currentMajorVer int) (string, error) {
+		return "v1.0.0", nil
+	})
+	defer stub.Reset()
+	stub.Stub(&getTagCode, func(owner string, repo string, latestTag string) (string, error) {
+		return "./", nil
+	})
+	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 1)
+	if err == nil {
+		assert.FailNow(t, "expect test failure, but test success")
+	}
+	if !strings.HasPrefix(err.Error(), "terraform configuration not idempotent") {
+		assert.Failf(t, "not expected error, actual error is:%s", err.Error())
+	}
+}
+
+func TestModuleUpgradeTestShouldSkipV0(t *testing.T) {
+	stub := gostub.Stub(&getLatestTag, func(owner string, repo string, currentMajorVer int) (string, error) {
 		return "v0.0.1", nil
 	})
 	defer stub.Reset()
@@ -22,12 +39,7 @@ func TestModuleUpgradeTest(t *testing.T) {
 		return "./", nil
 	})
 	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 0)
-	if err == nil {
-		assert.FailNow(t, "expect test failure, but test success")
-	}
-	if !strings.HasPrefix(err.Error(), "terraform configuration not idempotent") {
-		assert.Failf(t, "not expected error, actual error is:%s", err.Error())
-	}
+	assert.Equal(t, SkipV0Error, err)
 }
 
 func TestGetLatestTag(t *testing.T) {
@@ -41,7 +53,7 @@ func TestSkipIfNoTagsWithinMajorVersion(t *testing.T) {
 	v := os.TempDir()
 	assert.NotEqual(t, "", v)
 	_, err := getLatestTag("hashicorp", "terraform", 100)
-	assert.Equal(t, SkipError, err)
+	assert.Equal(t, CannotTestError, err)
 }
 
 func TestGetCurrentMajorVersionFromEnv_default(t *testing.T) {
@@ -116,10 +128,14 @@ func TestNoValidVersion(t *testing.T) {
 }
 
 func TestDetectPlanDiff(t *testing.T) {
+	stub := gostub.Stub(&getLatestTag, func(owner string, repo string, currentMajorVer int) (string, error) {
+		return "v1.0.0", nil
+	})
+	defer stub.Reset()
 	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{
 		Upgrade: true,
-	}, 0)
-	assert.NotEqual(t, SkipError, err)
+	}, 1)
+	assert.NotEqual(t, CannotTestError, err)
 	assert.NotNil(t, err)
 }
 

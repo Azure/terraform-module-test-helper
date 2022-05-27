@@ -22,7 +22,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var SkipError = fmt.Errorf("no previous tag yet or previous tag's folder structure is different than the current version, skip upgrade test")
+var CannotTestError = fmt.Errorf("no previous tag yet or previous tag's folder structure is different than the current version, skip upgrade test")
+var SkipV0Error = fmt.Errorf("v0 is meant to be unstable, skip upgrade test")
 
 type repositoryTag struct {
 	*github.RepositoryTag
@@ -32,7 +33,7 @@ type repositoryTag struct {
 //goland:noinspection GoUnusedExportedFunction
 func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
 	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, opts, currentMajorVer)
-	if err == SkipError {
+	if err == CannotTestError || err == SkipV0Error {
 		t.Skipf(err.Error())
 	}
 	if err != nil {
@@ -77,6 +78,9 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 	if err != nil {
 		return err
 	}
+	if semver.Major(latestTag) == "v0" {
+		return SkipV0Error
+	}
 	tmpDirForTag, err := getTagCode(owner, repo, latestTag)
 	if err != nil {
 		return err
@@ -86,7 +90,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 
 	exists := files.FileExists(fullTerraformModuleFolder)
 	if !exists {
-		return SkipError
+		return CannotTestError
 	}
 	tmpTestDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
 	return diffTwoVersions(t, opts, tmpTestDir, newModulePath)
@@ -182,7 +186,7 @@ var getLatestTag = func(owner string, repo string, currentMajorVer int) (string,
 	}
 	first := latestTagWithinMajorVersion(tags, currentMajorVer)
 	if first == nil {
-		return "", SkipError
+		return "", CannotTestError
 	}
 	latestTag := first.GetName()
 	return latestTag, nil
