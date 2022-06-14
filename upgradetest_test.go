@@ -154,3 +154,10 @@ func TestNoChange(t *testing.T) {
 	}, tmpDir, "../before")
 	assert.Nil(t, err)
 }
+
+func TestGetRepoCode(t *testing.T) {
+	codePath, err := getTagCode("hashicorp", "go-getter", "v1.0.0")
+	assert.Nil(t, err)
+	_, err = os.Stat(codePath)
+	assert.False(t, os.IsNotExist(err))
+}

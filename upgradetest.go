@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,7 +17,8 @@ import (
 	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
-	"github.com/hashicorp/go-getter"
+	"github.com/hashicorp/go-getter/v2"
+	"github.com/hashicorp/terraform-json"
 	"golang.org/x/mod/semver"
 )
 
@@ -168,7 +168,7 @@ func renderOverrideFile(moduleDir string) error {
 
 var getTagCode = func(owner string, repo string, latestTag string) (string, error) {
 	tmpDirForTag := filepath.Join(os.TempDir(), latestTag)
-	err := getter.Get(tmpDirForTag, fmt.Sprintf("github.com/%s/%s?ref=%s", owner, repo, latestTag))
+	_, err := getter.Get(context.TODO(), tmpDirForTag, fmt.Sprintf("github.com/%s/%s?ref=%s", owner, repo, latestTag))
 	if err != nil {
 		return "", fmt.Errorf("cannot get module with tag:%s", err.Error())
 	}
