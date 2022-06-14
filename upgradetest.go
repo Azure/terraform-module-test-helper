@@ -167,7 +167,7 @@ func renderOverrideFile(moduleDir string) error {
 }
 
 var getTagCode = func(owner string, repo string, latestTag string) (string, error) {
-	tmpDirForTag := filepath.Join(os.TempDir(), latestTag)
+	tmpDirForTag := filepath.Join(os.TempDir(), owner, repo, latestTag)
 	_, err := getter.Get(context.TODO(), tmpDirForTag, fmt.Sprintf("github.com/%s/%s?ref=%s", owner, repo, latestTag))
 	if err != nil {
 		return "", fmt.Errorf("cannot get module with tag:%s", err.Error())
