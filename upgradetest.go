@@ -100,20 +100,22 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	opts.TerraformDir = originTerraformDir
 	defer terraform.Destroy(t, &opts)
 	terraform.InitAndApplyAndIdempotent(t, &opts)
-
 	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
+	return initAndPlanAndIdempotentAtEasyMode(t, opts)
+}
 
-	opts.PlanFilePath = filepath.Join(originTerraformDir, "tf.plan")
+func initAndPlanAndIdempotentAtEasyMode(t *testing.T, opts terraform.Options) error {
+	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
 	exitCode := terraform.InitAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
-	if exitCode == 0 || noChanges(changes) {
+	if exitCode == 0 || noChange(changes) {
 		return nil
 	}
 	return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
 }
 
-func noChanges(changes map[string]*tfjson.ResourceChange) bool {
+func noChange(changes map[string]*tfjson.ResourceChange) bool {
 	if len(changes) == 0 {
 		return true
 	}

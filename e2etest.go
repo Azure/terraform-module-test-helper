@@ -18,7 +18,11 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	}
 	option.TerraformDir = tmpDir
 	defer terraform.Destroy(t, &option)
-	terraform.InitAndApplyAndIdempotent(t, &option)
+	terraform.InitAndApply(t, &option)
+	err = initAndPlanAndIdempotentAtEasyMode(t, option)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	if assertion != nil {
 		noLoggerOption, err := option.Clone()
 		if err != nil {

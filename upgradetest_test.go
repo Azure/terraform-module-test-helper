@@ -127,18 +127,6 @@ func TestNoValidVersion(t *testing.T) {
 	assert.Nil(t, first)
 }
 
-func TestDetectPlanDiff(t *testing.T) {
-	stub := gostub.Stub(&getLatestTag, func(owner string, repo string, currentMajorVer int) (string, error) {
-		return "v1.0.0", nil
-	})
-	defer stub.Reset()
-	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{
-		Upgrade: true,
-	}, 1)
-	assert.NotEqual(t, CannotTestError, err)
-	assert.NotNil(t, err)
-}
-
 func TestAddNewOutputShouldNotFailTheTest(t *testing.T) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, "./example/output_upgrade", "test")
 	err := diffTwoVersions(t, terraform.Options{
