@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -106,6 +107,7 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 
 func initAndPlanAndIdempotentAtEasyMode(t *testing.T, opts terraform.Options) error {
 	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
+	opts.Logger = logger.Discard
 	exitCode := terraform.InitAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
