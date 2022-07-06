@@ -33,7 +33,7 @@ type repositoryTag struct {
 
 //goland:noinspection GoUnusedExportedFunction
 func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
-	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, opts, currentMajorVer)
+	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
 	if err == CannotTestError || err == SkipV0Error {
 		t.Skipf(err.Error())
 	}

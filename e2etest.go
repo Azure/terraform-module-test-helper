@@ -11,6 +11,7 @@ import (
 type TerraformOutput = map[string]interface{}
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
+	option = retryableOptions(t, option)
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	err := renderOverrideFile(tmpDir)
 	if err != nil {
@@ -32,4 +33,10 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 		noLoggerOption.Logger = logger.Discard
 		assertion(t, terraform.OutputAll(t, noLoggerOption))
 	}
+}
+
+func retryableOptions(t *testing.T, options terraform.Options) terraform.Options {
+	result := terraform.WithDefaultRetryableErrors(t, &options)
+	result.RetryableTerraformErrors[".*Please try again.*"] = "Service side suggest retry."
+	return *result
 }
