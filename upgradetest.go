@@ -121,9 +121,10 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 	if len(changes) == 0 {
 		return true
 	}
-	return linq.FromMapG[string, *tfjson.ResourceChange](changes).
-		All(func(pair linq.KeyValueG[string, *tfjson.ResourceChange]) bool {
-		change := pair.Value.Change
+	return linq.From(changes).Select(func(i interface{}) interface{} {
+		return i.(linq.KeyValue).Value
+	}).All(func(i interface{}) bool {
+		change := i.(*tfjson.ResourceChange).Change
 		if change == nil {
 			return true
 		}
