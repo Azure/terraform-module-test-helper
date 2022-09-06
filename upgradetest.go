@@ -38,7 +38,7 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 		t.Skipf(err.Error())
 	}
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 }
 
@@ -121,10 +121,9 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 	if len(changes) == 0 {
 		return true
 	}
-	return linq.From(changes).Select(func(i interface{}) interface{} {
-		return i.(linq.KeyValue).Value
-	}).All(func(i interface{}) bool {
-		change := i.(*tfjson.ResourceChange).Change
+	return linq.FromMapG[string, *tfjson.ResourceChange](changes).
+		All(func(pair linq.KeyValueG[string, *tfjson.ResourceChange]) bool {
+		change := pair.Value.Change
 		if change == nil {
 			return true
 		}
@@ -151,21 +150,35 @@ func renderOverrideFile(moduleDir string) error {
 	}
 	tplt := template.Must(template.New("override.tf.tplt").Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath))
 	dstOverrideTf := filepath.Join(moduleDir, "override.tf")
+	dstFs, err := createOrOverwrite(dstOverrideTf)
+	if err != nil {
+		return err
+	}
+	//goland:noinspection GoUnhandledErrorResult
+	defer dstFs.Close()
+	if err = tplt.Execute(dstFs, err); err != nil {
+		return fmt.Errorf("cannot write override.tf for %s:%s", dstOverrideTf, err.Error())
+	}
+	return nil
+}
+
+func createOrOverwrite(dstOverrideTf string) (*os.File, error) {
+	if err := removeIfExist(dstOverrideTf); err != nil {
+		return nil, err
+	}
+	dstFs, err := os.Create(filepath.Clean(dstOverrideTf))
+	if err != nil {
+		return nil, fmt.Errorf("cannot create dst override file:%s", err.Error())
+	}
+	return dstFs, nil
+}
+
+func removeIfExist(dstOverrideTf string) error {
 	if _, err := os.Stat(dstOverrideTf); err == nil {
 		err = os.Remove(dstOverrideTf)
 		if err != nil {
 			return fmt.Errorf("cannot delete dst override file:%s", err.Error())
 		}
-	}
-	dstFs, err := os.Create(dstOverrideTf)
-	if err != nil {
-		return fmt.Errorf("cannot create dst override file:%s", err.Error())
-	}
-	//goland:noinspection GoUnhandledErrorResult
-	defer dstFs.Close()
-	err = tplt.Execute(dstFs, err)
-	if err != nil {
-		return fmt.Errorf("cannot write override.tf for %s:%s", dstOverrideTf, err.Error())
 	}
 	return nil
 }
@@ -197,7 +210,7 @@ var getLatestTag = func(owner string, repo string, currentMajorVer int) (string,
 }
 
 func latestTagWithinMajorVersion(tags []*github.RepositoryTag, currentMajorVer int) *github.RepositoryTag {
-	t := linq.From(tags).Where(notNil).Select(wrap).Where(valid).Sort(semanticSort).Where(sameMajorVersion(currentMajorVer)).Select(unwrap).First()
+	t := linq.From(tags).Where(notNil).Select(wrap).Where(valid).Sort(bySemantic).Where(sameMajorVersion(currentMajorVer)).Select(unwrap).First()
 	if t == nil {
 		return nil
 	}
@@ -217,7 +230,7 @@ func valid(t interface{}) bool {
 	return semver.IsValid(v) && !strings.Contains(v, "rc")
 }
 
-func semanticSort(i, j interface{}) bool {
+func bySemantic(i, j interface{}) bool {
 	it := i.(repositoryTag)
 	jt := j.(repositoryTag)
 	return semver.Compare(it.version, jt.version) > 0

@@ -78,7 +78,7 @@ func TestTagWithAlphaSuffix(t *testing.T) {
 	currentTag := &github.RepositoryTag{
 		Name: &current,
 	}
-	sort := semanticSort(wrap(alphaTag), wrap(currentTag))
+	sort := bySemantic(wrap(alphaTag), wrap(currentTag))
 	assert.False(t, sort)
 }
 

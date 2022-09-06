@@ -13,26 +13,24 @@ type TerraformOutput = map[string]interface{}
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	option = retryableOptions(t, option)
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
-	err := renderOverrideFile(tmpDir)
-	if err != nil {
-		t.Errorf(err.Error())
+	if err := renderOverrideFile(tmpDir); err != nil {
+		t.Fatalf(err.Error())
 	}
 	option.TerraformDir = tmpDir
 	defer terraform.Destroy(t, &option)
 	terraform.InitAndApply(t, &option)
-	err = initAndPlanAndIdempotentAtEasyMode(t, option)
-	if err != nil {
-		t.Errorf(err.Error())
+	if err := initAndPlanAndIdempotentAtEasyMode(t, option); err != nil {
+		t.Fatalf(err.Error())
 	}
 	if assertion != nil {
-		noLoggerOption, err := option.Clone()
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-		// default logger might leak sensitive data
-		noLoggerOption.Logger = logger.Discard
-		assertion(t, terraform.OutputAll(t, noLoggerOption))
+		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}
+}
+
+func removeLogger(option terraform.Options) *terraform.Options {
+	// default logger might leak sensitive data
+	option.Logger = logger.Discard
+	return &option
 }
 
 func retryableOptions(t *testing.T, options terraform.Options) terraform.Options {
