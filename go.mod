@@ -1,4 +1,4 @@
-module github.com/lonegunmanb/terraform-module-test-helper
+module github.com/Azure/terraform-module-test-helper
 
 go 1.18
 
