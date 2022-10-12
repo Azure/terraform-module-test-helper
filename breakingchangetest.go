@@ -75,7 +75,22 @@ func filterBreakingChanges(cl []Change) []Change {
 	variables := linq.From(cl).Where(func(i interface{}) bool {
 		return i.(Change).Category == Variable
 	})
-	return breakingVariables(variables)
+	outputs := linq.From(cl).Where(func(i interface{}) bool {
+		return i.(Change).Category == Output
+	})
+	variableChanges := breakingVariables(variables)
+	outputChanges := breakingOutputs(outputs)
+	return append(variableChanges, outputChanges...)
+}
+
+func breakingOutputs(outputs linq.Query) []Change {
+	var r []Change
+	deletedOutputs := outputs.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
+	})
+	deletedOutputs.ToSlice(&r)
+	return r
 }
 
 func breakingVariables(variables linq.Query) []Change {
@@ -86,7 +101,14 @@ func breakingVariables(variables linq.Query) []Change {
 		c := i.(Change)
 		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
 	})
-	requiredNewVariables.Select(recordForName).Concat(deletedVariables).ToSlice(&r)
+	noUpdateAttributes := linq.From([]string{"Default", "Type", "Nullable"})
+	breakingUpdatedVariables := variables.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Attribute != nil && noUpdateAttributes.Contains(*c.Attribute)
+	})
+	requiredNewVariables.Select(recordForName).
+		Concat(deletedVariables).
+		Concat(breakingUpdatedVariables).ToSlice(&r)
 	return r
 }
 
