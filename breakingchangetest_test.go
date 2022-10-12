@@ -135,6 +135,46 @@ func TestBreakingChange_RemoveVariableShouldBeBreakingChange(t *testing.T) {
 	}))
 }
 
+func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	newCode :=strings.Join([]string{basicOptionalVariable, basicRequiredVariable, basicOutput, basicResource}, "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 0, len(changes))
+}
+
+func TestBreakingChange_RenameVariableShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	renamedVariable := `variable "renamed_name" {
+  description = "Name of the vnet to create"
+  type        = string
+}`
+	newCode := strings.Join([]string{renamedVariable, basicOptionalVariable, basicOutput, basicResource}, "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 2, len(changes))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return *c.Name == "vnet_name" && c.Type == "delete"
+	}))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return *c.Name == "renamed_name" && c.Type == "create"
+	}))
+}
+
 func loadModuleByCode(code string) (*tfconfig.Module, error) {
 	parser := hclparse.NewParser()
 	file, diag := parser.ParseHCL([]byte(code), "main.tf")
