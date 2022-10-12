@@ -13,14 +13,14 @@ const (
 	Output   ChangeCategory = "Outputs"
 )
 
-type BreakingChange struct {
+type Change struct {
 	diff.Change
 	Category  ChangeCategory `json:"category"`
 	Name      *string        `json:"name"`
 	Attribute *string        `json:"attribute"`
 }
 
-func BreakingChanges(m1 *tfconfig.Module, m2 *tfconfig.Module) ([]BreakingChange, error) {
+func BreakingChanges(m1 *tfconfig.Module, m2 *tfconfig.Module) ([]Change, error) {
 	sanitizeModule(m1)
 	sanitizeModule(m2)
 	changelog, err := diff.Diff(m1, m2)
@@ -46,7 +46,7 @@ func sanitizeModule(m *tfconfig.Module) {
 	}
 }
 
-func convert(cl diff.Changelog) (r []BreakingChange) {
+func convert(cl diff.Changelog) (r []Change) {
 	linq.From(cl).Select(func(i interface{}) interface{} {
 		c := i.(diff.Change)
 		var name, attribute *string
@@ -56,7 +56,7 @@ func convert(cl diff.Changelog) (r []BreakingChange) {
 		if len(c.Path) > 2 {
 			attribute = &c.Path[2]
 		}
-		return BreakingChange{
+		return Change{
 			Change: diff.Change{
 				Type: c.Type,
 				Path: c.Path,
@@ -71,26 +71,34 @@ func convert(cl diff.Changelog) (r []BreakingChange) {
 	return
 }
 
-func filterBreakingChanges(cl []BreakingChange) []BreakingChange {
-	var r []BreakingChange
+func filterBreakingChanges(cl []Change) []Change {
 	variables := linq.From(cl).Where(func(i interface{}) bool {
-		return i.(BreakingChange).Category == Variable
+		return i.(Change).Category == Variable
 	})
+	return breakingVariables(variables)
+}
+
+func breakingVariables(variables linq.Query) []Change {
+	var r []Change
 	newVariables := variables.Where(isNewVariable)
 	requiredNewVariables := groupByName(newVariables).Where(noDefaultValue)
-	requiredNewVariables.Select(recordForName).ToSlice(&r)
+	deletedVariables := variables.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
+	})
+	requiredNewVariables.Select(recordForName).Concat(deletedVariables).ToSlice(&r)
 	return r
 }
 
 func recordForName(g interface{}) interface{} {
 	return linq.From(g.(linq.Group).Group).FirstWith(func(i interface{}) bool {
-		return i.(BreakingChange).Attribute != nil && *i.(BreakingChange).Attribute == "Name"
+		return i.(Change).Attribute != nil && *i.(Change).Attribute == "Name"
 	})
 }
 
 func groupByName(newVariables linq.Query) linq.Query {
 	return newVariables.GroupBy(func(i interface{}) interface{} {
-		return *i.(BreakingChange).Name
+		return *i.(Change).Name
 	}, func(i interface{}) interface{} {
 		return i
 	})
@@ -98,10 +106,10 @@ func groupByName(newVariables linq.Query) linq.Query {
 
 func noDefaultValue(g interface{}) bool {
 	return linq.From(g.(linq.Group).Group).All(func(i interface{}) bool {
-		return i.(BreakingChange).Attribute == nil || *i.(BreakingChange).Attribute != "default"
+		return i.(Change).Attribute == nil || *i.(Change).Attribute != "Default"
 	})
 }
 
 func isNewVariable(i interface{}) bool {
-	return i.(BreakingChange).Type == "create"
+	return i.(Change).Type == "create"
 }

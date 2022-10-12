@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/stretchr/testify/assert"
@@ -9,11 +10,18 @@ import (
 	"testing"
 )
 
-const basicVariable = `
+const basicOptionalVariable = `
 variable "address_space" {
   type        = list(string)
   description = "The address space that is used by the virtual network."
   default     = ["10.0.0.0/16"]
+}
+`
+
+const basicRequiredVariable = `
+variable "vnet_name" {
+  description = "Name of the vnet to create"
+  type        = string
 }
 `
 
@@ -35,10 +43,9 @@ resource "azurerm_virtual_network" "vnet" {
 }
 `
 
-var tpl = strings.Join([]string{basicVariable, basicOutput, basicVariable, basicResource}, "\n")
+var tpl = strings.Join([]string{basicRequiredVariable, basicOptionalVariable, basicOutput, basicResource}, "\n")
 
-func Test_NewRequiredVariableShouldReturnError(t *testing.T) {
-	oldCode := tpl
+func TestBreakingChange_NewRequiredVariableShouldBeBreakingChange(t *testing.T) {
 	newVariableName := "vnet_location"
 	newRequiredVariable := fmt.Sprintf(`
 variable "%s" {
@@ -47,14 +54,14 @@ variable "%s" {
   nullable    = false
 }
 `, newVariableName)
-	newCode := fmt.Sprintf("%s\n%s", oldCode, newRequiredVariable)
+	newCode := fmt.Sprintf("%s\n%s", tpl, newRequiredVariable)
 	oldModule := noError(t, func() (*tfconfig.Module, error) {
-		return loadModuleByCode(oldCode)
+		return loadModuleByCode(tpl)
 	})
 	newModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(newCode)
 	})
-	changes := noError(t, func() ([]BreakingChange, error) {
+	changes := noError(t, func() ([]Change, error) {
 		return BreakingChanges(oldModule, newModule)
 	})
 	assert.Equal(t, 1, len(changes))
@@ -63,48 +70,69 @@ variable "%s" {
 	assert.Equal(t, "Name", *changes[0].Attribute)
 }
 
-func Test_NewOptionalVariableShouldNotReturnError(t *testing.T) {
-	oldCode := tpl
-	newOptionalVariableWithNullableArgument := `
+func TestBreakingChange_NewOptionalVariableShouldNotBeBreakingChange(t *testing.T) {
+	cases := []struct{
+		code string
+		name string
+	}{{
+		code: `
 variable "vnet_location" {
   description = "The location of the vnet to create."
   type        = string
   nullable    = false
   default	  = "eastus"
 }
-`
-	newOptionalVariableWithoutNulableArgument := `
+`,
+		name: "optionalVariableWithNullableArgument",
+	}, {
+		code: `
 variable "vnet_location2" {
   description = "The location of the vnet to create."
   type        = string
   default	  = "eastus"
 }
-`
-	cases := []struct{
-		code string
-		name string
-	}{{
-		code: newOptionalVariableWithNullableArgument,
-		name: "optionalVariableWithNullableArgument",
-	}, {
-		code: newOptionalVariableWithoutNulableArgument,
+`,
 		name: "optionalVariableWithoutNullableArgument",
 	}}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			newCode := fmt.Sprintf("%s\n%s", oldCode, c.code)
+			newCode := fmt.Sprintf("%s\n%s", tpl, c.code)
 			oldModule := noError(t, func() (*tfconfig.Module, error) {
-				return loadModuleByCode(oldCode)
+				return loadModuleByCode(tpl)
 			})
 			newModule := noError(t, func() (*tfconfig.Module, error) {
 				return loadModuleByCode(newCode)
 			})
-			changes := noError(t, func() ([]BreakingChange, error) {
+			changes := noError(t, func() ([]Change, error) {
 				return BreakingChanges(oldModule, newModule)
 			})
 			assert.Equal(t, 0, len(changes))
 		})
 	}
+}
+
+func TestBreakingChange_RemoveVariableShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	newCode :=strings.Join([]string{basicOutput, basicResource}, "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 2, len(changes))
+	assert.Equal(t, "delete", changes[0].Type)
+	assert.Equal(t, "delete", changes[1].Type)
+	assert.Equal(t, "Name", *changes[0].Attribute)
+	assert.Equal(t, "Name", *changes[1].Attribute)
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		return *i.(Change).Name == "vnet_name"
+	}))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		return *i.(Change).Name == "address_space"
+	}))
 }
 
 func loadModuleByCode(code string) (*tfconfig.Module, error) {
