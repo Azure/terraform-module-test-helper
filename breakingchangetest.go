@@ -89,7 +89,17 @@ func breakingOutputs(outputs linq.Query) []Change {
 		c := i.(Change)
 		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
 	})
-	deletedOutputs.ToSlice(&r)
+	valueChangedOutputs := outputs.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Value")
+	})
+	sensitiveChangedOutputs := outputs.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Sensitive" && c.To == true)
+	})
+	deletedOutputs.
+		Concat(valueChangedOutputs).
+		Concat(sensitiveChangedOutputs).ToSlice(&r)
 	return r
 }
 
@@ -101,14 +111,18 @@ func breakingVariables(variables linq.Query) []Change {
 		c := i.(Change)
 		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
 	})
-	noUpdateAttributes := linq.From([]string{"Default", "Type", "Nullable"})
-	breakingUpdatedVariables := variables.Where(func(i interface{}) bool {
+	typeChangedVariables := variables.Where(func(i interface{}) bool {
 		c := i.(Change)
-		return c.Type == "update" && c.Attribute != nil && noUpdateAttributes.Contains(*c.Attribute)
+		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Type" && !isStringNilOrEmpty(c.To))
+	})
+	defaultValueBreakingChangeVariables := variables.Where(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Default" && c.From != nil)
 	})
 	requiredNewVariables.Select(recordForName).
 		Concat(deletedVariables).
-		Concat(breakingUpdatedVariables).ToSlice(&r)
+		Concat(typeChangedVariables).
+		Concat(defaultValueBreakingChangeVariables).ToSlice(&r)
 	return r
 }
 
@@ -134,4 +148,12 @@ func noDefaultValue(g interface{}) bool {
 
 func isNewVariable(i interface{}) bool {
 	return i.(Change).Type == "create"
+}
+
+func isStringNilOrEmpty(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	s, ok := i.(string)
+	return !ok || s == ""
 }

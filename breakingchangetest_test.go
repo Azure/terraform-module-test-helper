@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -50,6 +51,7 @@ resource "azurerm_virtual_network" "vnet" {
   tags                = var.tags
 }
 `
+
 var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, unTypedVariable, basicOutput, basicResource}
 var tpl = strings.Join(basicBlocks, "\n")
 
@@ -157,7 +159,7 @@ func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) 
 	assert.Empty(t, changes)
 }
 
-func TestBreakingChange_RenameVariableShouldBeBreakingChange(t *testing.T) {
+func TestBreakingChange_RenameRequiredVariableShouldBeBreakingChange(t *testing.T) {
 	oldModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(tpl)
 	})
@@ -180,6 +182,30 @@ func TestBreakingChange_RenameVariableShouldBeBreakingChange(t *testing.T) {
 	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
 		c := i.(Change)
 		return *c.Name == "renamed_name" && c.Type == "create"
+	}))
+}
+
+func TestBreakingChange_RenameOptionalVariableShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	renamedVariable := `
+variable "renamed_variable" {
+  type        = list(string)
+  description = "The address space that is used by the virtual network."
+  default     = ["10.0.0.0/16"]
+}`
+	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, renamedVariable), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return *c.Name == "address_space" && c.Type == "delete"
 	}))
 }
 
@@ -255,6 +281,50 @@ variable "vnet_name" {
 	}))
 }
 
+func TestBreakingChange_AddVariableTypeShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "subnet_service_endpoints" {
+  description = "A map of subnet name to service endpoints to add to the subnet."
+  type        = map(string)
+  default     = {}
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, unTypedVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.Equal(t, "subnet_service_endpoints", *changes[0].Name)
+	assert.Equal(t, "update", changes[0].Type)
+	assert.Equal(t, "Type", *changes[0].Attribute)
+}
+
+func TestBreakingChange_RemoveVariableTypeShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "address_space" {
+  description = "The address space that is used by the virtual network."
+  default     = ["10.0.0.0/16"]
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
 func TestBreakingChange_ChangeVariableTypeShouldBeBreakingChange(t *testing.T) {
 	oldModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(tpl)
@@ -279,6 +349,25 @@ variable "address_space" {
 	}))
 }
 
+func TestBreakingChange_RemoveVariableDescriptionShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "address_space" {
+  type        = list(string)
+  default     = ["10.0.0.0/16"]
+}`
+	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
 func TestBreakingChange_ChangeVariableDescriptionShouldNotBeBreakingChange(t *testing.T) {
 	oldModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(tpl)
@@ -290,6 +379,28 @@ variable "address_space" {
   default     = ["10.0.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
+func TestBreakingChange_AddVariableDefaultValueShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "vnet_name" {
+  description = "Name of the vnet to create"
+  type        = string
+  nullable    = false
+  default     = "vnet"
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicRequiredVariable, changedVariable), "\n")
 	newModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(newCode)
 	})
@@ -333,6 +444,229 @@ func TestBreakingChange_RemoveOutputBeBreakingChange(t *testing.T) {
 	assert.Equal(t, "delete", changes[0].Type)
 	assert.Equal(t, "vnet_subnets_name_id", *changes[0].Name)
 	assert.Equal(t, "Name", *changes[0].Attribute)
+}
+
+func TestBreakingChange_RenameOutputShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	renamedOutput := `
+output "renamed_output" {
+  description = "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)"
+  value       = local.azurerm_subnets
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, renamedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.Equal(t, "delete", changes[0].Type)
+	assert.Equal(t, "vnet_subnets_name_id", *changes[0].Name)
+	assert.Equal(t, "Name", *changes[0].Attribute)
+}
+
+func TestBreakingChange_ChangeOutputDescriptionShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	renamedOutput := `
+output "vnet_subnets_name_id" {
+  description = "changed description"
+  value       = local.azurerm_subnets
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, renamedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
+func TestBreakingChange_RemoveOutputDescriptionShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedOutput := `
+output "vnet_subnets_name_id" {
+  value       = local.azurerm_subnets
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
+func TestBreakingChange_ChangeOutputValueShouldBeBreakingChange(t *testing.T) {
+	t.Skip("terraform-config-inspect do not support output's value yet")
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedOutput := `
+output "vnet_subnets_name_id" {
+  description = "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)"
+  value       = azurerm_subnet.main.id
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.Equal(t, "update", changes[0].Type)
+	assert.Equal(t, "vnet_subnets_name_id", *changes[0].Name)
+	assert.Equal(t, "Value", *changes[0].Attribute)
+}
+
+func TestBreakingChange_AddOutputSensitiveTrueShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedOutput := `
+output "vnet_subnets_name_id" {
+  description = "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)"
+  value       = local.azurerm_subnets
+  sensitive   = true
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.Equal(t, "update", changes[0].Type)
+	assert.Equal(t, "vnet_subnets_name_id", *changes[0].Name)
+	assert.Equal(t, "Sensitive", *changes[0].Attribute)
+}
+
+func TestBreakingChange_AddOutputSensitiveFalseShouldNotBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedOutput := `
+output "vnet_subnets_name_id" {
+  description = "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)"
+  value       = local.azurerm_subnets
+  sensitive   = false
+}
+`
+	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
+func TestBreakingChange_ChangeOutputSensitiveToFalseShouldNotBeBreakingChange(t *testing.T) {
+	sensitiveBlock := `
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  sensitive   = true
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
+	})
+	changedOutput := `
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  sensitive   = false
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`
+	newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Empty(t, changes)
+}
+
+func TestBreakingChange_ChangeOutputSensitiveToTrueShouldBeBreakingChange(t *testing.T) {
+	sensitiveBlock := `
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  sensitive   = false
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`
+	oldModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
+	})
+	changedOutput := `
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  sensitive   = true
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`
+	newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
+	newModule := noError(t, func() (*tfconfig.Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.Equal(t, "kube_admin_config_raw", *changes[0].Name)
+	assert.Equal(t, "update", changes[0].Type)
+	assert.Equal(t, "Sensitive", *changes[0].Attribute)
+}
+
+func TestBreakingChange_RemoveOutputSensitiveShouldNotBeBreakingChange(t *testing.T) {
+	values := []bool{true, false}
+	for _, v := range values {
+		t.Run(strconv.FormatBool(v), func(t *testing.T) {
+
+			sensitiveBlock := fmt.Sprintf(`
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  sensitive   = %t
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`, v)
+			oldModule := noError(t, func() (*tfconfig.Module, error) {
+				return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
+			})
+			changedOutput := `
+output "kube_admin_config_raw" {
+  description = "A sensitive output"
+  value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
+}
+`
+			newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
+			newModule := noError(t, func() (*tfconfig.Module, error) {
+				return loadModuleByCode(newCode)
+			})
+			changes := noError(t, func() ([]Change, error) {
+				return BreakingChanges(oldModule, newModule)
+			})
+			assert.Empty(t, changes)
+		})
+	}
 }
 
 func loadModuleByCode(code string) (*tfconfig.Module, error) {
