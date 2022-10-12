@@ -35,7 +35,7 @@ resource "azurerm_virtual_network" "vnet" {
 }
 `
 
-var tpl = strings.Join([]string{basicVariable, basicOutput, basicVariable}, "\n")
+var tpl = strings.Join([]string{basicVariable, basicOutput, basicVariable, basicResource}, "\n")
 
 func Test_NewRequiredVariableShouldReturnError(t *testing.T) {
 	oldCode := tpl
@@ -61,6 +61,50 @@ variable "%s" {
 	assert.Equal(t, "create", changes[0].Type)
 	assert.Equal(t, newVariableName, *changes[0].Name)
 	assert.Equal(t, "Name", *changes[0].Attribute)
+}
+
+func Test_NewOptionalVariableShouldNotReturnError(t *testing.T) {
+	oldCode := tpl
+	newOptionalVariableWithNullableArgument := `
+variable "vnet_location" {
+  description = "The location of the vnet to create."
+  type        = string
+  nullable    = false
+  default	  = "eastus"
+}
+`
+	newOptionalVariableWithoutNulableArgument := `
+variable "vnet_location2" {
+  description = "The location of the vnet to create."
+  type        = string
+  default	  = "eastus"
+}
+`
+	cases := []struct{
+		code string
+		name string
+	}{{
+		code: newOptionalVariableWithNullableArgument,
+		name: "optionalVariableWithNullableArgument",
+	}, {
+		code: newOptionalVariableWithoutNulableArgument,
+		name: "optionalVariableWithoutNullableArgument",
+	}}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			newCode := fmt.Sprintf("%s\n%s", oldCode, c.code)
+			oldModule := noError(t, func() (*tfconfig.Module, error) {
+				return loadModuleByCode(oldCode)
+			})
+			newModule := noError(t, func() (*tfconfig.Module, error) {
+				return loadModuleByCode(newCode)
+			})
+			changes := noError(t, func() ([]BreakingChange, error) {
+				return BreakingChanges(oldModule, newModule)
+			})
+			assert.Equal(t, 0, len(changes))
+		})
+	}
 }
 
 func loadModuleByCode(code string) (*tfconfig.Module, error) {
