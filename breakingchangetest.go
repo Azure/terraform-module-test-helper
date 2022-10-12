@@ -13,16 +13,16 @@ const (
 	Output   ChangeCategory = "Outputs"
 )
 
-type Change struct {
+type BreakingChange struct {
 	diff.Change
 	Category  ChangeCategory `json:"category"`
 	Name      *string        `json:"name"`
 	Attribute *string        `json:"attribute"`
 }
 
-func BreakingChanges(m1 *tfconfig.Module, m2 *tfconfig.Module) ([]Change, error) {
-	processModule(m1)
-	processModule(m2)
+func BreakingChanges(m1 *tfconfig.Module, m2 *tfconfig.Module) ([]BreakingChange, error) {
+	sanitizeModule(m1)
+	sanitizeModule(m2)
 	changelog, err := diff.Diff(m1, m2)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func BreakingChanges(m1 *tfconfig.Module, m2 *tfconfig.Module) ([]Change, error)
 	return filterBreakingChanges(convert(changelog)), nil
 }
 
-func processModule(m *tfconfig.Module) {
+func sanitizeModule(m *tfconfig.Module) {
 	m.Path = ""
 	for _, v := range m.Variables {
 		v.Pos = *new(tfconfig.SourcePos)
@@ -46,12 +46,8 @@ func processModule(m *tfconfig.Module) {
 	}
 }
 
-func convert(cl diff.Changelog) (r []Change) {
-	expected := linq.From([]string{"Variables", "Outputs"})
-	linq.From(cl).Where(func(i interface{}) bool {
-		c := i.(diff.Change)
-		return expected.Contains(c.Path[0])
-	}).Select(func(i interface{}) interface{} {
+func convert(cl diff.Changelog) (r []BreakingChange) {
+	linq.From(cl).Select(func(i interface{}) interface{} {
 		c := i.(diff.Change)
 		var name, attribute *string
 		if len(c.Path) > 1 {
@@ -60,7 +56,7 @@ func convert(cl diff.Changelog) (r []Change) {
 		if len(c.Path) > 2 {
 			attribute = &c.Path[2]
 		}
-		return Change{
+		return BreakingChange{
 			Change: diff.Change{
 				Type: c.Type,
 				Path: c.Path,
@@ -75,10 +71,10 @@ func convert(cl diff.Changelog) (r []Change) {
 	return
 }
 
-func filterBreakingChanges(cl []Change) []Change {
-	var r []Change
+func filterBreakingChanges(cl []BreakingChange) []BreakingChange {
+	var r []BreakingChange
 	variables := linq.From(cl).Where(func(i interface{}) bool {
-		return i.(Change).Category == Variable
+		return i.(BreakingChange).Category == Variable
 	})
 	newVariables := variables.Where(isNewVariable)
 	requiredNewVariables := groupByName(newVariables).Where(noDefaultValue)
@@ -88,13 +84,13 @@ func filterBreakingChanges(cl []Change) []Change {
 
 func recordForName(g interface{}) interface{} {
 	return linq.From(g.(linq.Group).Group).FirstWith(func(i interface{}) bool {
-		return i.(Change).Attribute != nil && *i.(Change).Attribute == "Name"
+		return i.(BreakingChange).Attribute != nil && *i.(BreakingChange).Attribute == "Name"
 	})
 }
 
 func groupByName(newVariables linq.Query) linq.Query {
 	return newVariables.GroupBy(func(i interface{}) interface{} {
-		return *i.(Change).Name
+		return *i.(BreakingChange).Name
 	}, func(i interface{}) interface{} {
 		return i
 	})
@@ -102,10 +98,10 @@ func groupByName(newVariables linq.Query) linq.Query {
 
 func noDefaultValue(g interface{}) bool {
 	return linq.From(g.(linq.Group).Group).All(func(i interface{}) bool {
-		return i.(Change).Attribute == nil || *i.(Change).Attribute != "default"
+		return i.(BreakingChange).Attribute == nil || *i.(BreakingChange).Attribute != "default"
 	})
 }
 
 func isNewVariable(i interface{}) bool {
-	return i.(Change).Type == "create"
+	return i.(BreakingChange).Type == "create"
 }

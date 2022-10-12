@@ -54,7 +54,7 @@ variable "%s" {
 	newModule := noError(t, func() (*tfconfig.Module, error) {
 		return loadModuleByCode(newCode)
 	})
-	changes := noError(t, func() ([]Change, error) {
+	changes := noError(t, func() ([]BreakingChange, error) {
 		return BreakingChanges(oldModule, newModule)
 	})
 	assert.Equal(t, 1, len(changes))
