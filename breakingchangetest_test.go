@@ -54,7 +54,14 @@ resource "azurerm_virtual_network" "vnet" {
 }
 `
 
-var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, unTypedVariable, basicOutput, basicResource}
+const basicSensitiveVariable = `
+variable "db_username" {
+  description = "Database administrator username"
+  type        = string
+  sensitive   = true
+}`
+
+var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, basicSensitiveVariable, unTypedVariable, basicOutput, basicResource}
 var tpl = strings.Join(basicBlocks, "\n")
 
 func TestBreakingChange_NewRequiredVariableShouldBeBreakingChange(t *testing.T) {
@@ -151,7 +158,7 @@ func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) 
 	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
-	newCode := strings.Join([]string{unTypedVariable, basicOptionalVariable, basicRequiredVariable, basicOutput, basicResource}, "\n")
+	newCode := strings.Join([]string{unTypedVariable, basicOptionalVariable, basicRequiredVariable, basicOutput, basicResource, basicSensitiveVariable}, "\n")
 	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
@@ -258,8 +265,81 @@ variable "address_space" {
 	}))
 }
 
+func TestBreakingChange_AddVariableSensitiveShouldNotBeBreakingChange(t *testing.T) {
+	sensitiveValues := []bool{true, false}
+	for _, v := range sensitiveValues {
+		t.Run(strconv.FormatBool(v), func(t *testing.T) {
+			oldModule := noError(t, func() (*Module, error) {
+				return loadModuleByCode(tpl)
+			})
+			changedVariable := fmt.Sprintf(`
+variable "address_space" {
+  type        = list(string)
+  description = "The address space that is used by the virtual network."
+  default     = ["10.0.0.0/16"]
+  sensitive   = %t
+}
+`, v)
+			newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
+			newModule := noError(t, func() (*Module, error) {
+				return loadModuleByCode(newCode)
+			})
+			changes := noError(t, func() ([]Change, error) {
+				return BreakingChanges(oldModule, newModule)
+			})
+			assert.Equal(t, 0, len(changes))
+		})
+	}
+}
+
+func TestBreakingChange_ChangeVariableSensitiveFromTrueToFalseShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "db_username" {
+  description = "Database administrator username"
+  type        = string
+  sensitive   = false
+}`
+	newCode := strings.Join(replaceString(basicBlocks, basicSensitiveVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return *c.Name == "db_username" && c.Type == "update" && *c.Attribute == "Sensitive"
+	}))
+}
+
+func TestBreakingChange_RemoveVariableSensitiveShouldBeBreakingChange(t *testing.T) {
+	oldModule := noError(t, func() (*Module, error) {
+		return loadModuleByCode(tpl)
+	})
+	changedVariable := `
+variable "db_username" {
+  description = "Database administrator username"
+  type        = string
+}`
+	newCode := strings.Join(replaceString(basicBlocks, basicSensitiveVariable, changedVariable), "\n")
+	newModule := noError(t, func() (*Module, error) {
+		return loadModuleByCode(newCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldModule, newModule)
+	})
+	assert.Equal(t, 1, len(changes))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return *c.Name == "db_username" && c.Type == "update" && *c.Attribute == "Sensitive"
+	}))
+}
+
 func TestBreakingChange_ChangeVariableNullableShouldBeBreakingChange(t *testing.T) {
-	t.Skip("terraform-config-inspect do not support nullable yet.")
 	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
@@ -682,9 +762,9 @@ func loadModuleByCode(code string) (*Module, error) {
 		return nil, diag
 	}
 	return &Module{
-		Module:     m,
-		parser:     &dummyParser{
-			code: code,
+		Module: m,
+		parser: &dummyParser{
+			code:     code,
 			fileName: "main.tf",
 		},
 	}, nil

@@ -3,7 +3,6 @@ package terraform_module_test_helper
 import (
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/r3labs/diff/v3"
 )
 
@@ -21,106 +20,39 @@ type Change struct {
 	Attribute *string        `json:"attribute"`
 }
 
-type Module struct {
-	*tfconfig.Module
-	OutputExts map[string]Output
-	parser     FileParser
-}
-
-type Output struct {
-	Name        string
-	Description *string
-	Sensitive   *string
-	Value       string
-	Range       hcl.Range
-}
-
-func (m *Module) LoadOutputExts() error {
-	var fileNames []string
-	linq.From(m.Outputs).Select(func(i interface{}) interface{} {
-		return i.(linq.KeyValue).Value.(*tfconfig.Output).Pos.Filename
-	}).Distinct().ToSlice(&fileNames)
-	m.OutputExts = make(map[string]Output)
-	for _, n := range fileNames {
-		f, err := m.parser.Parse(n)
-		if err != nil {
-			return err
-		}
-		content, _, diag := f.Body.PartialContent(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{
-				{
-					Type:       "output",
-					LabelNames: []string{"name"},
-				},
-			},
-		})
-		if diag.HasErrors() {
-			return diag
-		}
-		for _, b := range content.Blocks {
-			attributes, diag := b.Body.JustAttributes()
-			if diag.HasErrors() {
-				return diag
-			}
-			o := Output{
-				Name:  b.Labels[0],
-				Range: b.DefRange,
-				Value: *attributeValueString(attributes["value"], f),
-			}
-			if desc, ok := attributes["description"]; ok {
-				o.Description = attributeValueString(desc, f)
-			}
-			if sensitive, ok := attributes["sensitive"]; ok {
-				o.Sensitive = attributeValueString(sensitive, f)
-			}
-			o.Range = hcl.Range{}
-			m.OutputExts[b.Labels[0]] = o
-		}
-	}
-	return nil
-}
-
 func BreakingChanges(m1 *Module, m2 *Module) ([]Change, error) {
-	err := m1.LoadOutputExts()
+	err := m1.Load()
 	if err != nil {
 		return nil, err
 	}
-	err = m2.LoadOutputExts()
+	err = m2.Load()
 	if err != nil {
 		return nil, err
 	}
-	sanitizeModule(m1)
-	sanitizeModule(m2)
 
-	changelog, err := diff.Diff(m1.Module, m2.Module)
+	variableChangeLogs, err := changeLog(m1.VariableExts, m2.VariableExts, variable)
 	if err != nil {
 		return nil, err
 	}
-	outputChangeLogs, err := diff.Diff(m1.OutputExts, m2.OutputExts)
+	outputChangeLogs, err := changeLog(m1.OutputExts, m2.OutputExts, output)
 	if err != nil {
 		return nil, err
 	}
-	linq.From(outputChangeLogs).Select(func(i interface{}) interface{} {
-		l := i.(diff.Change)
-		l.Path = append([]string{output}, l.Path...)
-		return l
-	}).ToSlice(&outputChangeLogs)
-	changelog = append(changelog, outputChangeLogs...)
+	changelog := append(variableChangeLogs, outputChangeLogs...)
 	return filterBreakingChanges(convert(changelog)), nil
 }
 
-func sanitizeModule(m *Module) {
-	m.Path = ""
-	for _, v := range m.Variables {
-		v.Pos = *new(tfconfig.SourcePos)
+func changeLog(i1, i2 interface{}, category ChangeCategory) (diff.Changelog, error) {
+	logs, err := diff.Diff(i1, i2)
+	if err != nil {
+		return nil, err
 	}
-	for _, r := range m.ManagedResources {
-		r.Pos = *new(tfconfig.SourcePos)
-	}
-	for _, r := range m.DataResources {
-		r.Pos = *new(tfconfig.SourcePos)
-	}
-	m.Outputs = nil
+	linq.From(logs).Select(func(i interface{}) interface{} {
+		l := i.(diff.Change)
+		l.Path = append([]string{category}, l.Path...)
+		return l
+	}).ToSlice(&logs)
+	return logs, nil
 }
 
 func convert(cl diff.Changelog) (r []Change) {
@@ -152,68 +84,85 @@ func filterBreakingChanges(cl []Change) []Change {
 	variables := linq.From(cl).Where(func(i interface{}) bool {
 		return i.(Change).Category == variable
 	})
+	variableChanges := breakingVariables(variables)
 	outputs := linq.From(cl).Where(func(i interface{}) bool {
 		return i.(Change).Category == output
 	})
-	variableChanges := breakingVariables(variables)
 	outputChanges := breakingOutputs(outputs)
 	return append(variableChanges, outputChanges...)
 }
 
 func breakingOutputs(outputs linq.Query) []Change {
 	var r []Change
-	deletedOutputs := outputs.Where(func(i interface{}) bool {
-		c := i.(Change)
-		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
-	})
-	valueChangedOutputs := outputs.Where(func(i interface{}) bool {
-		c := i.(Change)
-		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Value")
-	})
-	sensitiveChangedOutputs := outputs.Where(func(i interface{}) bool {
-		c := i.(Change)
-		isSensitive := c.Type == "update" && c.Attribute != nil && *c.Attribute == "Sensitive"
-		if !isSensitive {
-			return false
-		}
-		switch c.To.(type) {
-		// When add `sensitive` attribute
-		case *string:
-			return *(c.To.(*string)) == "true"
-		// When change `senstitive`'s value
-		case string:
-			return c.To.(string) == "true"
-		default:
-			return false
-		}
-	})
+	deletedOutputs := outputs.Where(isDeletedOutput)
+	valueChangedOutputs := outputs.Where(valueChangedOutput)
+	sensitiveChangedOutputs := outputs.Where(sensitiveChangeToTrueVariable)
 	deletedOutputs.
 		Concat(valueChangedOutputs).
 		Concat(sensitiveChangedOutputs).ToSlice(&r)
 	return r
 }
 
+func sensitiveChangeToTrueVariable(i interface{}) bool {
+	c := i.(Change)
+	isSensitive := c.Type == "update" && c.Attribute != nil && *c.Attribute == "Sensitive"
+	if !isSensitive {
+		return false
+	}
+	s, ok := c.To.(string)
+	return ok && s == "true"
+}
+
+func valueChangedOutput(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Value")
+}
+
+func isDeletedOutput(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
+}
+
 func breakingVariables(variables linq.Query) []Change {
 	var r []Change
 	newVariables := variables.Where(isNewVariable)
 	requiredNewVariables := groupByName(newVariables).Where(noDefaultValue)
-	deletedVariables := variables.Where(func(i interface{}) bool {
+	deletedVariables := variables.Where(isDeletedVariable)
+	typeChangedVariables := variables.Where(typeChanged)
+	defaultValueBreakingChangeVariables := variables.Where(newDefaultValue)
+	nullableChangeVariables := variables.Where(nullableChanged)
+	sensitiveBrokenVariables := variables.Where(func(i interface{}) bool {
 		c := i.(Change)
-		return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
-	})
-	typeChangedVariables := variables.Where(func(i interface{}) bool {
-		c := i.(Change)
-		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Type" && !isStringNilOrEmpty(c.To))
-	})
-	defaultValueBreakingChangeVariables := variables.Where(func(i interface{}) bool {
-		c := i.(Change)
-		return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Default" && c.From != nil)
+		return c.Type == "update" && c.Attribute != nil && *c.Attribute == "Sensitive" && c.From == "true" && (c.To == "" || c.To == "false")
 	})
 	requiredNewVariables.Select(recordForName).
 		Concat(deletedVariables).
 		Concat(typeChangedVariables).
-		Concat(defaultValueBreakingChangeVariables).ToSlice(&r)
+		Concat(defaultValueBreakingChangeVariables).
+		Concat(nullableChangeVariables).
+		Concat(sensitiveBrokenVariables).
+		ToSlice(&r)
 	return r
+}
+
+func nullableChanged(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "update" && c.Attribute != nil && *c.Attribute == "Nullable"
+}
+
+func newDefaultValue(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Default" && c.From != "")
+}
+
+func typeChanged(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "update" && c.Attribute != nil && (*c.Attribute == "Type" && !isStringNilOrEmpty(c.To))
+}
+
+func isDeletedVariable(i interface{}) bool {
+	c := i.(Change)
+	return c.Type == "delete" && c.Attribute != nil && *c.Attribute == "Name"
 }
 
 func recordForName(g interface{}) interface{} {
@@ -248,7 +197,6 @@ func isStringNilOrEmpty(i interface{}) bool {
 	return !ok || s == ""
 }
 
-func attributeValueString(a *hcl.Attribute, f *hcl.File) *string {
-	s := string(a.Expr.Range().SliceBytes(f.Bytes))
-	return &s
+func attributeValueString(a *hcl.Attribute, f *hcl.File) string {
+	return string(a.Expr.Range().SliceBytes(f.Bytes))
 }
