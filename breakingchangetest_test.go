@@ -3,7 +3,9 @@ package terraform_module_test_helper
 import (
 	"fmt"
 	"github.com/ahmetb/go-linq/v3"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/stretchr/testify/assert"
 	"strconv"
@@ -65,10 +67,10 @@ variable "%s" {
 }
 `, newVariableName)
 	newCode := fmt.Sprintf("%s\n%s", tpl, newRequiredVariable)
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -107,10 +109,10 @@ variable "vnet_location2" {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			newCode := fmt.Sprintf("%s\n%s", tpl, c.code)
-			oldModule := noError(t, func() (*tfconfig.Module, error) {
+			oldModule := noError(t, func() (*Module, error) {
 				return loadModuleByCode(tpl)
 			})
-			newModule := noError(t, func() (*tfconfig.Module, error) {
+			newModule := noError(t, func() (*Module, error) {
 				return loadModuleByCode(newCode)
 			})
 			changes := noError(t, func() ([]Change, error) {
@@ -122,11 +124,11 @@ variable "vnet_location2" {
 }
 
 func TestBreakingChange_RemoveVariableShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	newCode := strings.Join(removeBlocks(basicBlocks, basicOptionalVariable, basicRequiredVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -146,11 +148,11 @@ func TestBreakingChange_RemoveVariableShouldBeBreakingChange(t *testing.T) {
 }
 
 func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	newCode := strings.Join([]string{unTypedVariable, basicOptionalVariable, basicRequiredVariable, basicOutput, basicResource}, "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -160,7 +162,7 @@ func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) 
 }
 
 func TestBreakingChange_RenameRequiredVariableShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	renamedVariable := `variable "renamed_name" {
@@ -168,7 +170,7 @@ func TestBreakingChange_RenameRequiredVariableShouldBeBreakingChange(t *testing.
   type        = string
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicRequiredVariable, renamedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -186,7 +188,7 @@ func TestBreakingChange_RenameRequiredVariableShouldBeBreakingChange(t *testing.
 }
 
 func TestBreakingChange_RenameOptionalVariableShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	renamedVariable := `
@@ -196,7 +198,7 @@ variable "renamed_variable" {
   default     = ["10.0.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, renamedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -210,7 +212,7 @@ variable "renamed_variable" {
 }
 
 func TestBreakingChange_RemoveVariableDefaultValueShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -219,7 +221,7 @@ variable "address_space" {
   description = "The address space that is used by the virtual network."
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -233,7 +235,7 @@ variable "address_space" {
 }
 
 func TestBreakingChange_ChangeVariableDefaultValueShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -243,7 +245,7 @@ variable "address_space" {
   default     = ["192.168.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -258,7 +260,7 @@ variable "address_space" {
 
 func TestBreakingChange_ChangeVariableNullableShouldBeBreakingChange(t *testing.T) {
 	t.Skip("terraform-config-inspect do not support nullable yet.")
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -268,7 +270,7 @@ variable "vnet_name" {
   nullable    = true
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicRequiredVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -282,7 +284,7 @@ variable "vnet_name" {
 }
 
 func TestBreakingChange_AddVariableTypeShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -293,7 +295,7 @@ variable "subnet_service_endpoints" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, unTypedVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -306,7 +308,7 @@ variable "subnet_service_endpoints" {
 }
 
 func TestBreakingChange_RemoveVariableTypeShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -316,7 +318,7 @@ variable "address_space" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -326,7 +328,7 @@ variable "address_space" {
 }
 
 func TestBreakingChange_ChangeVariableTypeShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -336,7 +338,7 @@ variable "address_space" {
   default     = ["10.0.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -350,7 +352,7 @@ variable "address_space" {
 }
 
 func TestBreakingChange_RemoveVariableDescriptionShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -359,7 +361,7 @@ variable "address_space" {
   default     = ["10.0.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -369,7 +371,7 @@ variable "address_space" {
 }
 
 func TestBreakingChange_ChangeVariableDescriptionShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -379,7 +381,7 @@ variable "address_space" {
   default     = ["10.0.0.0/16"]
 }`
 	newCode := strings.Join(replaceString(basicBlocks, basicOptionalVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -389,7 +391,7 @@ variable "address_space" {
 }
 
 func TestBreakingChange_AddVariableDefaultValueShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedVariable := `
@@ -401,7 +403,7 @@ variable "vnet_name" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicRequiredVariable, changedVariable), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -411,7 +413,7 @@ variable "vnet_name" {
 }
 
 func TestBreakingChange_NewOutputShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	newOutput := `
@@ -420,7 +422,7 @@ output "vnet_subnets_name_id" {
   value       = local.azurerm_subnets
 }`
 	newCode := fmt.Sprintf("%s\n%s", tpl, newOutput)
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -430,11 +432,11 @@ output "vnet_subnets_name_id" {
 }
 
 func TestBreakingChange_RemoveOutputBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	newCode := strings.Join(removeBlocks(basicBlocks, basicOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -447,7 +449,7 @@ func TestBreakingChange_RemoveOutputBeBreakingChange(t *testing.T) {
 }
 
 func TestBreakingChange_RenameOutputShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	renamedOutput := `
@@ -457,7 +459,7 @@ output "renamed_output" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, renamedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -470,7 +472,7 @@ output "renamed_output" {
 }
 
 func TestBreakingChange_ChangeOutputDescriptionShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	renamedOutput := `
@@ -480,7 +482,7 @@ output "vnet_subnets_name_id" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, renamedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -490,7 +492,7 @@ output "vnet_subnets_name_id" {
 }
 
 func TestBreakingChange_RemoveOutputDescriptionShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedOutput := `
@@ -499,7 +501,7 @@ output "vnet_subnets_name_id" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -509,8 +511,7 @@ output "vnet_subnets_name_id" {
 }
 
 func TestBreakingChange_ChangeOutputValueShouldBeBreakingChange(t *testing.T) {
-	t.Skip("terraform-config-inspect do not support output's value yet")
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedOutput := `
@@ -520,7 +521,7 @@ output "vnet_subnets_name_id" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -533,7 +534,7 @@ output "vnet_subnets_name_id" {
 }
 
 func TestBreakingChange_AddOutputSensitiveTrueShouldBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedOutput := `
@@ -544,7 +545,7 @@ output "vnet_subnets_name_id" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -557,7 +558,7 @@ output "vnet_subnets_name_id" {
 }
 
 func TestBreakingChange_AddOutputSensitiveFalseShouldNotBeBreakingChange(t *testing.T) {
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
 	changedOutput := `
@@ -568,7 +569,7 @@ output "vnet_subnets_name_id" {
 }
 `
 	newCode := strings.Join(replaceString(basicBlocks, basicOutput, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -585,7 +586,7 @@ output "kube_admin_config_raw" {
   value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
 }
 `
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
 	})
 	changedOutput := `
@@ -596,7 +597,7 @@ output "kube_admin_config_raw" {
 }
 `
 	newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -613,7 +614,7 @@ output "kube_admin_config_raw" {
   value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
 }
 `
-	oldModule := noError(t, func() (*tfconfig.Module, error) {
+	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
 	})
 	changedOutput := `
@@ -624,7 +625,7 @@ output "kube_admin_config_raw" {
 }
 `
 	newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
-	newModule := noError(t, func() (*tfconfig.Module, error) {
+	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})
 	changes := noError(t, func() ([]Change, error) {
@@ -648,7 +649,7 @@ output "kube_admin_config_raw" {
   value       = azurerm_kubernetes_cluster.main.kube_admin_config_raw
 }
 `, v)
-			oldModule := noError(t, func() (*tfconfig.Module, error) {
+			oldModule := noError(t, func() (*Module, error) {
 				return loadModuleByCode(strings.Join(append(basicBlocks, sensitiveBlock), "\n"))
 			})
 			changedOutput := `
@@ -658,7 +659,7 @@ output "kube_admin_config_raw" {
 }
 `
 			newCode := strings.Join(append(basicBlocks, changedOutput), "\n")
-			newModule := noError(t, func() (*tfconfig.Module, error) {
+			newModule := noError(t, func() (*Module, error) {
 				return loadModuleByCode(newCode)
 			})
 			changes := noError(t, func() ([]Change, error) {
@@ -669,7 +670,7 @@ output "kube_admin_config_raw" {
 	}
 }
 
-func loadModuleByCode(code string) (*tfconfig.Module, error) {
+func loadModuleByCode(code string) (*Module, error) {
 	parser := hclparse.NewParser()
 	file, diag := parser.ParseHCL([]byte(code), "main.tf")
 	if diag.HasErrors() {
@@ -680,7 +681,13 @@ func loadModuleByCode(code string) (*tfconfig.Module, error) {
 	if diag.HasErrors() {
 		return nil, diag
 	}
-	return m, nil
+	return &Module{
+		Module:     m,
+		parser:     &dummyParser{
+			code: code,
+			fileName: "main.tf",
+		},
+	}, nil
 }
 
 func noError[T any](t *testing.T, f func() (T, error)) T {
@@ -704,4 +711,19 @@ func removeBlocks(slice []string, itemsToRemove ...string) []string {
 
 func replaceString(slice []string, old, new string) []string {
 	return append(removeBlocks(slice, old), new)
+}
+
+var _ FileParser = &dummyParser{}
+
+type dummyParser struct {
+	code     string
+	fileName string
+}
+
+func (d *dummyParser) Parse(path string) (*hcl.File, error) {
+	f, diag := hclsyntax.ParseConfig([]byte(d.code), path, hcl.Pos{})
+	if diag.HasErrors() {
+		return nil, diag
+	}
+	return f, nil
 }
