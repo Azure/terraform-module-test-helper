@@ -2,14 +2,13 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/ahmetb/go-linq/v3"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/stretchr/testify/assert"
 )
@@ -774,12 +773,19 @@ func loadModuleByCode(code string) (*Module, error) {
 	if diag.HasErrors() {
 		return nil, diag
 	}
+	mapFs := afero.NewMemMapFs()
+	f, err := mapFs.Create("main.tf")
+	if err != nil {
+		return nil, err
+	}
+	_, err = f.WriteString(code)
+	if err != nil {
+		return nil, err
+	}
+	fs := afero.Afero{Fs: mapFs}
 	return &Module{
 		Module: m,
-		parser: &dummyParser{
-			code:     code,
-			fileName: "main.tf",
-		},
+		fs:     fs,
 	}, nil
 }
 
@@ -804,19 +810,4 @@ func removeBlocks(slice []string, itemsToRemove ...string) []string {
 
 func replaceString(slice []string, old, new string) []string {
 	return append(removeBlocks(slice, old), new)
-}
-
-var _ FileParser = &dummyParser{}
-
-type dummyParser struct {
-	code     string
-	fileName string
-}
-
-func (d *dummyParser) Parse(path string) (*hcl.File, error) {
-	f, diag := hclsyntax.ParseConfig([]byte(d.code), path, hcl.Pos{})
-	if diag.HasErrors() {
-		return nil, diag
-	}
-	return f, nil
 }

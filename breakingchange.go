@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
@@ -48,11 +49,12 @@ func BreakingChangesDetect(owner, repo, currentModulePath string) (string, error
 	if err != nil {
 		return "", err
 	}
-	oldModule, err := NewModule(tmpDirForTag)
+	fs := afero.Afero{Fs: afero.OsFs{}}
+	oldModule, err := NewModule(tmpDirForTag, fs)
 	if err != nil {
 		return "", err
 	}
-	currentModule, err := NewModule(currentModulePath)
+	currentModule, err := NewModule(currentModulePath, fs)
 	if err != nil {
 		return "", err
 	}

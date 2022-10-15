@@ -3,8 +3,10 @@ package terraform_module_test_helper
 import (
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/spf13/afero"
 )
 
 type Module struct {
@@ -12,7 +14,7 @@ type Module struct {
 	OutputExts   map[string]Output
 	VariableExts map[string]Variable
 	dir          string
-	parser       FileParser
+	fs           afero.Afero
 }
 
 type Output struct {
@@ -33,7 +35,7 @@ type Variable struct {
 	Range       hcl.Range
 }
 
-func NewModule(dir string) (*Module, error) {
+func NewModule(dir string, fs afero.Afero) (*Module, error) {
 	m, diag := tfconfig.LoadModule(dir)
 	if diag.HasErrors() {
 		return nil, diag
@@ -42,7 +44,7 @@ func NewModule(dir string) (*Module, error) {
 		Module:       m,
 		OutputExts:   make(map[string]Output),
 		VariableExts: make(map[string]Variable),
-		parser:       fileParser{},
+		fs:           fs,
 	}, nil
 }
 
@@ -62,10 +64,15 @@ func (m *Module) LoadOutput() error {
 		return i.(linq.KeyValue).Value.(*tfconfig.Output).Pos.Filename
 	}).Distinct().ToSlice(&fileNames)
 	m.OutputExts = make(map[string]Output)
+	parser := hclparse.NewParser()
 	for _, n := range fileNames {
-		f, err := m.parser.Parse(n)
+		content, err := m.fs.ReadFile(n)
 		if err != nil {
 			return err
+		}
+		f, diag := parser.ParseHCL(content, n)
+		if diag.HasErrors() {
+			return diag
 		}
 		body, ok := f.Body.(*hclsyntax.Body)
 		if !ok {
@@ -101,10 +108,15 @@ func (m *Module) LoadVariable() error {
 		return i.(linq.KeyValue).Value.(*tfconfig.Variable).Pos.Filename
 	}).Distinct().ToSlice(&fileNames)
 	m.VariableExts = make(map[string]Variable)
+	parser := hclparse.NewParser()
 	for _, n := range fileNames {
-		f, err := m.parser.Parse(n)
+		content, err := m.fs.ReadFile(n)
 		if err != nil {
 			return err
+		}
+		f, diag := parser.ParseHCL(content, n)
+		if diag.HasErrors() {
+			return diag
 		}
 		body, ok := f.Body.(*hclsyntax.Body)
 		if !ok {
