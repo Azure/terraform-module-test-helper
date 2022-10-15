@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
@@ -10,6 +11,7 @@ type Module struct {
 	*tfconfig.Module
 	OutputExts   map[string]Output
 	VariableExts map[string]Variable
+	dir          string
 	parser       FileParser
 }
 
@@ -29,6 +31,19 @@ type Variable struct {
 	Sensitive   string
 	Nullable    string
 	Range       hcl.Range
+}
+
+func NewModule(dir string) (*Module, error) {
+	m, diag := tfconfig.LoadModule(dir)
+	if diag.HasErrors() {
+		return nil, diag
+	}
+	return &Module{
+		Module:       m,
+		OutputExts:   make(map[string]Output),
+		VariableExts: make(map[string]Variable),
+		parser:       fileParser{},
+	}, nil
 }
 
 func (m *Module) Load() error {
@@ -52,25 +67,18 @@ func (m *Module) LoadOutput() error {
 		if err != nil {
 			return err
 		}
-		content, _, diag := f.Body.PartialContent(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{
-				{
-					Type:       "output",
-					LabelNames: []string{"name"},
-				},
-			},
-		})
-		if diag.HasErrors() {
-			return diag
+		body, ok := f.Body.(*hclsyntax.Body)
+		if !ok {
+			continue
 		}
-		for _, b := range content.Blocks {
-			attributes, diag := b.Body.JustAttributes()
-			if diag.HasErrors() {
-				return diag
+		for _, b := range body.Blocks {
+			if b.Type != "output" {
+				continue
 			}
+			attributes := b.Body.Attributes
 			o := Output{
 				Name:  b.Labels[0],
-				Range: b.DefRange,
+				Range: b.Range(),
 				Value: attributeValueString(attributes["value"], f),
 			}
 			if desc, ok := attributes["description"]; ok {
@@ -98,25 +106,18 @@ func (m *Module) LoadVariable() error {
 		if err != nil {
 			return err
 		}
-		content, _, diag := f.Body.PartialContent(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{
-				{
-					Type:       "variable",
-					LabelNames: []string{"name"},
-				},
-			},
-		})
-		if diag.HasErrors() {
-			return diag
+		body, ok := f.Body.(*hclsyntax.Body)
+		if !ok {
+			continue
 		}
-		for _, b := range content.Blocks {
-			attributes, diag := b.Body.JustAttributes()
-			if diag.HasErrors() {
-				return diag
+		for _, b := range body.Blocks {
+			if b.Type != "variable" {
+				continue
 			}
+			attributes := b.Body.Attributes
 			v := Variable{
 				Name:  b.Labels[0],
-				Range: b.DefRange,
+				Range: b.Range(),
 			}
 			if desc, ok := attributes["description"]; ok {
 				v.Description = attributeValueString(desc, f)

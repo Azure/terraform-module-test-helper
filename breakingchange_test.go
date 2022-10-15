@@ -2,15 +2,16 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"testing"
+
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/stretchr/testify/assert"
-	"strconv"
-	"strings"
-	"testing"
 )
 
 const basicOptionalVariable = `
@@ -35,6 +36,18 @@ variable "subnet_service_endpoints" {
   default     = {}
 }
 `
+
+const variableWithValidation = `
+variable "identity_type" {
+  type        = string
+  description = "this is a description."
+  default     = "SystemAssigned"
+
+  validation {
+    condition     = var.identity_type == "SystemAssigned" || var.identity_type == "UserAssigned" || var.identity_type == "SystemAssigned, UserAssigned"
+    error_message = "this is an error message."
+  }
+}`
 
 const basicOutput = `
 output "vnet_subnets_name_id" {
@@ -61,7 +74,7 @@ variable "db_username" {
   sensitive   = true
 }`
 
-var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, basicSensitiveVariable, unTypedVariable, basicOutput, basicResource}
+var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, basicSensitiveVariable, variableWithValidation, unTypedVariable, basicOutput, basicResource}
 var tpl = strings.Join(basicBlocks, "\n")
 
 func TestBreakingChange_NewRequiredVariableShouldBeBreakingChange(t *testing.T) {
@@ -158,7 +171,7 @@ func TestBreakingChange_ReorderVariablesShouldNotBeBreakingChange(t *testing.T) 
 	oldModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(tpl)
 	})
-	newCode := strings.Join([]string{unTypedVariable, basicOptionalVariable, basicRequiredVariable, basicOutput, basicResource, basicSensitiveVariable}, "\n")
+	newCode := strings.Join([]string{unTypedVariable, basicOptionalVariable, basicRequiredVariable, variableWithValidation, basicOutput, basicResource, basicSensitiveVariable}, "\n")
 	newModule := noError(t, func() (*Module, error) {
 		return loadModuleByCode(newCode)
 	})

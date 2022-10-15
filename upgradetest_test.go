@@ -57,6 +57,11 @@ func TestSkipIfNoTagsWithinMajorVersion(t *testing.T) {
 }
 
 func TestGetCurrentMajorVersionFromEnv_default(t *testing.T) {
+	current := os.Getenv("PREVIOUS_MAJOR_VERSION")
+	_ = os.Setenv("PREVIOUS_MAJOR_VERSION", "")
+	defer func() {
+		os.Setenv("PREVIOUS_MAJOR_VERSION", current)
+	}()
 	majorVersionFromEnv, err := GetCurrentMajorVersionFromEnv()
 	assert.Nil(t, err)
 	assert.Equal(t, 0, majorVersionFromEnv)

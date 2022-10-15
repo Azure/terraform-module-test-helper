@@ -1,8 +1,11 @@
 package terraform_module_test_helper
 
 import (
+	"fmt"
+
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/r3labs/diff/v3"
 )
 
@@ -18,6 +21,54 @@ type Change struct {
 	Category  ChangeCategory `json:"category"`
 	Name      *string        `json:"name"`
 	Attribute *string        `json:"attribute"`
+}
+
+func (c Change) ToString() string {
+	var name string
+	if c.Name != nil {
+		name = *c.Name
+	}
+	var attribute string
+	if c.Attribute != nil {
+		attribute = *c.Attribute
+	}
+	return fmt.Sprintf(`[%s] "%s.%s.%s" from '%v' to '%v'`, c.Type, c.Category, name, attribute, c.From, c.To)
+}
+
+func BreakingChangesDetect(owner, repo, currentModulePath string) (string, error) {
+	currentMajorVer, err := GetCurrentMajorVersionFromEnv()
+	if err != nil {
+		return "", err
+	}
+	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
+	if err != nil {
+		return "", err
+	}
+	tmpDirForTag, err := getTagCode(owner, repo, latestTag)
+	if err != nil {
+		return "", err
+	}
+	oldModule, err := NewModule(tmpDirForTag)
+	if err != nil {
+		return "", err
+	}
+	currentModule, err := NewModule(currentModulePath)
+	if err != nil {
+		return "", err
+	}
+	changes, err := BreakingChanges(oldModule, currentModule)
+	if err != nil {
+		return "", err
+	}
+	aggregated := linq.From(changes).Select(func(i interface{}) interface{} {
+		return i.(Change).ToString()
+	}).Aggregate(func(i interface{}, i2 interface{}) interface{} {
+		return fmt.Sprintf("%v\n%v", i, i2)
+	})
+	if r, ok := aggregated.(string); ok {
+		return r, nil
+	}
+	return "", nil
 }
 
 func BreakingChanges(m1 *Module, m2 *Module) ([]Change, error) {
@@ -197,6 +248,6 @@ func isStringNilOrEmpty(i interface{}) bool {
 	return !ok || s == ""
 }
 
-func attributeValueString(a *hcl.Attribute, f *hcl.File) string {
+func attributeValueString(a *hclsyntax.Attribute, f *hcl.File) string {
 	return string(a.Expr.Range().SliceBytes(f.Bytes))
 }
