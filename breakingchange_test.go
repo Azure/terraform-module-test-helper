@@ -784,8 +784,10 @@ func loadModuleByCode(code string) (*Module, error) {
 	}
 	fs := afero.Afero{Fs: mapFs}
 	return &Module{
-		Module: m,
-		fs:     fs,
+		Module:       m,
+		VariableExts: make(map[string]Variable),
+		OutputExts:   make(map[string]Output),
+		fs:           fs,
 	}, nil
 }
 

@@ -1,6 +1,9 @@
 package terraform_module_test_helper
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -49,21 +52,7 @@ func NewModule(dir string, fs afero.Afero) (*Module, error) {
 }
 
 func (m *Module) Load() error {
-	if err := m.LoadVariable(); err != nil {
-		return err
-	}
-	if err := m.LoadOutput(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *Module) LoadOutput() error {
-	var fileNames []string
-	linq.From(m.Outputs).Select(func(i interface{}) interface{} {
-		return i.(linq.KeyValue).Value.(*tfconfig.Output).Pos.Filename
-	}).Distinct().ToSlice(&fileNames)
-	m.OutputExts = make(map[string]Output)
+	fileNames := m.codeFileNames()
 	parser := hclparse.NewParser()
 	for _, n := range fileNames {
 		content, err := m.fs.ReadFile(n)
@@ -79,77 +68,97 @@ func (m *Module) LoadOutput() error {
 			continue
 		}
 		for _, b := range body.Blocks {
-			if b.Type != "output" {
-				continue
+			switch b.Type {
+			case "variable":
+				{
+					v := m.parseVariable(b, f)
+					m.VariableExts[b.Labels[0]] = v
+				}
+			case "output":
+				{
+					o := m.parseOutput(b, f)
+					m.OutputExts[b.Labels[0]] = o
+				}
 			}
-			attributes := b.Body.Attributes
-			o := Output{
-				Name:  b.Labels[0],
-				Range: b.Range(),
-				Value: attributeValueString(attributes["value"], f),
-			}
-			if desc, ok := attributes["description"]; ok {
-				o.Description = attributeValueString(desc, f)
-			}
-			if sensitive, ok := attributes["sensitive"]; ok {
-				o.Sensitive = attributeValueString(sensitive, f)
-			}
-			// We don't compare position's change
-			o.Range = hcl.Range{}
-			m.OutputExts[b.Labels[0]] = o
 		}
 	}
 	return nil
 }
 
-func (m *Module) LoadVariable() error {
+func (m *Module) codeFileNames() []string {
 	var fileNames []string
 	linq.From(m.Variables).Select(func(i interface{}) interface{} {
 		return i.(linq.KeyValue).Value.(*tfconfig.Variable).Pos.Filename
-	}).Distinct().ToSlice(&fileNames)
-	m.VariableExts = make(map[string]Variable)
-	parser := hclparse.NewParser()
-	for _, n := range fileNames {
-		content, err := m.fs.ReadFile(n)
-		if err != nil {
-			return err
-		}
-		f, diag := parser.ParseHCL(content, n)
-		if diag.HasErrors() {
-			return diag
-		}
-		body, ok := f.Body.(*hclsyntax.Body)
-		if !ok {
-			continue
-		}
-		for _, b := range body.Blocks {
-			if b.Type != "variable" {
-				continue
-			}
-			attributes := b.Body.Attributes
-			v := Variable{
-				Name:  b.Labels[0],
-				Range: b.Range(),
-			}
-			if desc, ok := attributes["description"]; ok {
-				v.Description = attributeValueString(desc, f)
-			}
-			if sensitive, ok := attributes["sensitive"]; ok {
-				v.Sensitive = attributeValueString(sensitive, f)
-			}
-			if defaultValue, ok := attributes["default"]; ok {
-				v.Default = attributeValueString(defaultValue, f)
-			}
-			if nullable, ok := attributes["nullable"]; ok {
-				v.Nullable = attributeValueString(nullable, f)
-			}
-			if t, ok := attributes["type"]; ok {
-				v.Type = attributeValueString(t, f)
-			}
-			// We don't compare position's change
-			v.Range = hcl.Range{}
-			m.VariableExts[b.Labels[0]] = v
-		}
+	}).Distinct().Where(func(i interface{}) bool {
+		n := filepath.Base(i.(string))
+		// For now we only support tf, no json.
+		return fileExt(n) == ".tf" && !isOverride(n) && !isIgnoredFile(n)
+	}).ToSlice(&fileNames)
+	return fileNames
+}
+
+func (m *Module) parseOutput(b *hclsyntax.Block, f *hcl.File) Output {
+	attributes := b.Body.Attributes
+	o := Output{
+		Name:  b.Labels[0],
+		Range: b.Range(),
+		Value: attributeValueString(attributes["value"], f),
 	}
-	return nil
+	if desc, ok := attributes["description"]; ok {
+		o.Description = attributeValueString(desc, f)
+	}
+	if sensitive, ok := attributes["sensitive"]; ok {
+		o.Sensitive = attributeValueString(sensitive, f)
+	}
+	// We don't compare position's change
+	o.Range = hcl.Range{}
+	return o
+}
+
+func (m *Module) parseVariable(b *hclsyntax.Block, f *hcl.File) Variable {
+	attributes := b.Body.Attributes
+	v := Variable{
+		Name:  b.Labels[0],
+		Range: b.Range(),
+	}
+	if desc, ok := attributes["description"]; ok {
+		v.Description = attributeValueString(desc, f)
+	}
+	if sensitive, ok := attributes["sensitive"]; ok {
+		v.Sensitive = attributeValueString(sensitive, f)
+	}
+	if defaultValue, ok := attributes["default"]; ok {
+		v.Default = attributeValueString(defaultValue, f)
+	}
+	if nullable, ok := attributes["nullable"]; ok {
+		v.Nullable = attributeValueString(nullable, f)
+	}
+	if t, ok := attributes["type"]; ok {
+		v.Type = attributeValueString(t, f)
+	}
+	// We don't compare position's change
+	v.Range = hcl.Range{}
+	return v
+}
+
+func fileExt(path string) string {
+	if strings.HasSuffix(path, ".tf") {
+		return ".tf"
+	} else if strings.HasSuffix(path, ".tf.json") {
+		return ".tf.json"
+	} else {
+		return ""
+	}
+}
+
+func isIgnoredFile(name string) bool {
+	return strings.HasPrefix(name, ".") || // Unix-like hidden files
+		strings.HasSuffix(name, "~") || // vim
+		strings.HasPrefix(name, "#") && strings.HasSuffix(name, "#") // emacs
+}
+
+func isOverride(name string) bool {
+	ext := fileExt(name)
+	baseName := name[:len(name)-len(ext)] // strip extension
+	return baseName == "override" || strings.HasSuffix(baseName, "_override")
 }
