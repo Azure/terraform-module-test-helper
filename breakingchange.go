@@ -35,8 +35,8 @@ func (c Change) ToString() string {
 	return fmt.Sprintf(`[%s] "%s.%s.%s" from '%v' to '%v'`, c.Type, c.Category, name, attribute, c.From, c.To)
 }
 
-func BreakingChangesDetect(owner, repo, currentModulePath string) (string, error) {
-	tmpDirForLatestDefaultBranch, err := cloneGithubRepo(owner, repo, nil)
+func BreakingChangesDetect(currentModulePath, owner, repo string, tag *string) (string, error) {
+	tmpDirForLatestDefaultBranch, err := cloneGithubRepo(owner, repo, tag)
 	if err != nil {
 		return "", err
 	}
