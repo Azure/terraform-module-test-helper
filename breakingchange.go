@@ -6,7 +6,6 @@ import (
 
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/r3labs/diff/v3"
 )
 
@@ -250,6 +249,6 @@ func isStringNilOrEmpty(i interface{}) bool {
 	return !ok || s == ""
 }
 
-func attributeValueString(a *hclsyntax.Attribute, f *hcl.File) string {
+func attributeValueString(a *hcl.Attribute, f *hcl.File) string {
 	return string(a.Expr.Range().SliceBytes(f.Bytes))
 }

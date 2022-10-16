@@ -7,7 +7,6 @@ import (
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/spf13/afero"
 )
@@ -59,15 +58,32 @@ func (m *Module) Load() error {
 		if err != nil {
 			return err
 		}
-		f, diag := parser.ParseHCL(content, n)
+		var f *hcl.File
+		var diag hcl.Diagnostics
+		if fileExt(n) == ".tf" {
+			f, diag = parser.ParseHCL(content, n)
+		} else {
+			f, diag = parser.ParseJSON(content, n)
+		}
 		if diag.HasErrors() {
 			return diag
 		}
-		body, ok := f.Body.(*hclsyntax.Body)
-		if !ok {
-			continue
+		c, _, diag := f.Body.PartialContent(&hcl.BodySchema{
+			Blocks: []hcl.BlockHeaderSchema{
+				{
+					Type:       "variable",
+					LabelNames: []string{"name"},
+				},
+				{
+					Type:       "output",
+					LabelNames: []string{"name"},
+				},
+			},
+		})
+		if diag.HasErrors() {
+			return diag
 		}
-		for _, b := range body.Blocks {
+		for _, b := range c.Blocks {
 			switch b.Type {
 			case "variable":
 				{
@@ -92,16 +108,30 @@ func (m *Module) codeFileNames() []string {
 	}).Distinct().Where(func(i interface{}) bool {
 		n := filepath.Base(i.(string))
 		// For now we only support tf, no json.
-		return fileExt(n) == ".tf" && !isOverride(n) && !isIgnoredFile(n)
+		return fileExt(n) != "" && !isOverride(n) && !isIgnoredFile(n)
 	}).ToSlice(&fileNames)
 	return fileNames
 }
 
-func (m *Module) parseOutput(b *hclsyntax.Block, f *hcl.File) Output {
-	attributes := b.Body.Attributes
+func (m *Module) parseOutput(b *hcl.Block, f *hcl.File) Output {
+	content, _, _ := b.Body.PartialContent(&hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{
+				Name:     "value",
+				Required: true,
+			},
+			{
+				Name: "description",
+			},
+			{
+				Name: "sensitive",
+			},
+		},
+	})
+	attributes := content.Attributes
 	o := Output{
 		Name:  b.Labels[0],
-		Range: b.Range(),
+		Range: b.DefRange,
 		Value: attributeValueString(attributes["value"], f),
 	}
 	if desc, ok := attributes["description"]; ok {
@@ -115,11 +145,30 @@ func (m *Module) parseOutput(b *hclsyntax.Block, f *hcl.File) Output {
 	return o
 }
 
-func (m *Module) parseVariable(b *hclsyntax.Block, f *hcl.File) Variable {
-	attributes := b.Body.Attributes
+func (m *Module) parseVariable(b *hcl.Block, f *hcl.File) Variable {
+	content, _, _ := b.Body.PartialContent(&hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{
+				Name: "description",
+			},
+			{
+				Name: "sensitive",
+			},
+			{
+				Name: "default",
+			},
+			{
+				Name: "nullable",
+			},
+			{
+				Name: "type",
+			},
+		},
+	})
+	attributes := content.Attributes
 	v := Variable{
 		Name:  b.Labels[0],
-		Range: b.Range(),
+		Range: b.DefRange,
 	}
 	if desc, ok := attributes["description"]; ok {
 		v.Description = attributeValueString(desc, f)

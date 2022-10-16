@@ -73,8 +73,53 @@ variable "db_username" {
   sensitive   = true
 }`
 
+const jsonCode = `
+{                
+	"output": {                                                                                                                     
+        "vnet_subnets_name_id": [                                                                                                   
+            {                                                                                                                       
+                "description": "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)",
+                "value": "${local.azurerm_subnets}"                                                                                 
+            }                                                                                                                       
+        ]                                                                                                                           
+    },   
+    "variable": {                                           
+        "vnet_name": [                                      
+            {                                               
+                "description": "Name of the vnet to create",
+                "nullable": false,                          
+                "type": "string"                         
+            }
+        ]
+    }
+}
+`
+
 var basicBlocks = []string{basicRequiredVariable, basicOptionalVariable, basicSensitiveVariable, variableWithValidation, unTypedVariable, basicOutput, basicResource}
 var tpl = strings.Join(basicBlocks, "\n")
+
+func TestBreakingChange_JsonFormat(t *testing.T) {
+	newJsonCode := strings.ReplaceAll(jsonCode, "string", "number")
+	newJsonCode = strings.ReplaceAll(newJsonCode, "local.azurerm_subnets", "local.azurerm_subnet_names")
+	oldMoule := noError(t, func() (*Module, error) {
+		return loadModuleByJsonCode(jsonCode)
+	})
+	newModule := noError(t, func() (*Module, error) {
+		return loadModuleByJsonCode(newJsonCode)
+	})
+	changes := noError(t, func() ([]Change, error) {
+		return BreakingChanges(oldMoule, newModule)
+	})
+	assert.Equal(t, 2, len(changes))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Category == "Variables" && c.Attribute != nil && *c.Attribute == "Type"
+	}))
+	assert.True(t, linq.From(changes).AnyWith(func(i interface{}) bool {
+		c := i.(Change)
+		return c.Type == "update" && c.Category == "Outputs" && c.Attribute != nil && *c.Attribute == "Value"
+	}))
+}
 
 func TestBreakingChange_NewRequiredVariableShouldBeBreakingChange(t *testing.T) {
 	newVariableName := "vnet_location"
@@ -779,6 +824,35 @@ func loadModuleByCode(code string) (*Module, error) {
 		return nil, err
 	}
 	_, err = f.WriteString(code)
+	if err != nil {
+		return nil, err
+	}
+	fs := afero.Afero{Fs: mapFs}
+	return &Module{
+		Module:       m,
+		VariableExts: make(map[string]Variable),
+		OutputExts:   make(map[string]Output),
+		fs:           fs,
+	}, nil
+}
+
+func loadModuleByJsonCode(json string) (*Module, error) {
+	parser := hclparse.NewParser()
+	file, diag := parser.ParseJSON([]byte(json), "main.tf.json")
+	if diag.HasErrors() {
+		return nil, diag
+	}
+	m := tfconfig.NewModule("")
+	diag = tfconfig.LoadModuleFromFile(file, m)
+	if diag.HasErrors() {
+		return nil, diag
+	}
+	mapFs := afero.NewMemMapFs()
+	f, err := mapFs.Create("main.tf.json")
+	if err != nil {
+		return nil, err
+	}
+	_, err = f.WriteString(json)
 	if err != nil {
 		return nil, err
 	}
