@@ -42,6 +42,7 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	}
 }
 
+//goland:noinspection GoUnusedExportedFunction
 func GetCurrentModuleRootPath() (string, error) {
 	current, err := os.Getwd()
 	if err != nil {
@@ -82,7 +83,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 	if semver.Major(latestTag) == "v0" {
 		return SkipV0Error
 	}
-	tmpDirForTag, err := getTagCode(owner, repo, latestTag)
+	tmpDirForTag, err := cloneGithubRepo(owner, repo, &latestTag)
 	if err != nil {
 		return err
 	}
@@ -184,13 +185,19 @@ func removeIfExist(dstOverrideTf string) error {
 	return nil
 }
 
-var getTagCode = func(owner string, repo string, latestTag string) (string, error) {
-	tmpDirForTag := filepath.Join(os.TempDir(), owner, repo, latestTag)
-	_, err := getter.Get(context.TODO(), tmpDirForTag, fmt.Sprintf("github.com/%s/%s?ref=%s", owner, repo, latestTag))
-	if err != nil {
-		return "", fmt.Errorf("cannot get module with tag:%s", err.Error())
+var cloneGithubRepo = func(owner string, repo string, tag *string) (string, error) {
+	repoUrl := fmt.Sprintf("github.com/%s/%s", owner, repo)
+	dirPath := []string{os.TempDir(), owner, repo}
+	if tag != nil {
+		dirPath = append(dirPath, *tag)
+		repoUrl = fmt.Sprintf("%s?ref=%s", repoUrl, *tag)
 	}
-	return tmpDirForTag, nil
+	tmpDir := filepath.Join(dirPath...)
+	_, err := getter.Get(context.TODO(), tmpDir, repoUrl)
+	if err != nil {
+		return "", fmt.Errorf("cannot clone repo:%s", err.Error())
+	}
+	return tmpDir, nil
 }
 
 var getLatestTag = func(owner string, repo string, currentMajorVer int) (string, error) {

@@ -1,0 +1,19 @@
+{
+  "output": {
+    "vnet_subnets_name_id": [
+      {
+        "description": "Can be queried subnet-id by subnet name by using lookup(module.vnet.vnet_subnets_name_id, subnet1)",
+        "value": "${local.azurerm_subnet_names}"
+      }
+    ]
+  },
+  "variable": {
+    "vnet_name": [
+      {
+        "description": "Name of the vnet to create",
+        "nullable": false,
+        "type": "number"
+      }
+    ]
+  }
+}

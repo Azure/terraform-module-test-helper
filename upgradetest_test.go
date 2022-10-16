@@ -18,7 +18,7 @@ func TestModuleUpgradeTest(t *testing.T) {
 		return "v1.0.0", nil
 	})
 	defer stub.Reset()
-	stub.Stub(&getTagCode, func(owner string, repo string, latestTag string) (string, error) {
+	stub.Stub(&cloneGithubRepo, func(owner string, repo string, tag *string) (string, error) {
 		return "./", nil
 	})
 	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 1)
@@ -35,7 +35,7 @@ func TestModuleUpgradeTestShouldSkipV0(t *testing.T) {
 		return "v0.0.1", nil
 	})
 	defer stub.Reset()
-	stub.Stub(&getTagCode, func(owner string, repo string, latestTag string) (string, error) {
+	stub.Stub(&cloneGithubRepo, func(owner string, repo string, tag *string) (string, error) {
 		return "./", nil
 	})
 	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 0)
@@ -60,7 +60,7 @@ func TestGetCurrentMajorVersionFromEnv_default(t *testing.T) {
 	current := os.Getenv("PREVIOUS_MAJOR_VERSION")
 	_ = os.Setenv("PREVIOUS_MAJOR_VERSION", "")
 	defer func() {
-		os.Setenv("PREVIOUS_MAJOR_VERSION", current)
+		_ = os.Setenv("PREVIOUS_MAJOR_VERSION", current)
 	}()
 	majorVersionFromEnv, err := GetCurrentMajorVersionFromEnv()
 	assert.Nil(t, err)
@@ -68,7 +68,7 @@ func TestGetCurrentMajorVersionFromEnv_default(t *testing.T) {
 }
 
 func TestGetCurrentMajorVersionFromEnv_basic(t *testing.T) {
-	os.Setenv("PREVIOUS_MAJOR_VERSION", "v0")
+	_ = os.Setenv("PREVIOUS_MAJOR_VERSION", "v0")
 	majorVersionFromEnv, err := GetCurrentMajorVersionFromEnv()
 	assert.Nil(t, err)
 	assert.Equal(t, 1, majorVersionFromEnv)
@@ -149,7 +149,8 @@ func TestNoChange(t *testing.T) {
 }
 
 func TestGetRepoCode(t *testing.T) {
-	codePath, err := getTagCode("hashicorp", "go-getter", "v1.0.0")
+	tag := "v1.0.0"
+	codePath, err := cloneGithubRepo("hashicorp", "go-getter", &tag)
 	assert.Nil(t, err)
 	_, err = os.Stat(codePath)
 	assert.False(t, os.IsNotExist(err))

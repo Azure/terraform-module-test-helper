@@ -807,6 +807,18 @@ output "kube_admin_config_raw" {
 	}
 }
 
+func TestCompareHCLModules(t *testing.T) {
+	diff, err := CompareTwoModules("example/breaking_change/before", "example/breaking_change/after")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, diff)
+}
+
+func TestCompareJsonModules(t *testing.T) {
+	diff, err := CompareTwoModules("example/breaking_change/before_json", "example/breaking_change/after_json")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, diff)
+}
+
 func loadModuleByCode(code string) (*Module, error) {
 	parser := hclparse.NewParser()
 	file, diag := parser.ParseHCL([]byte(code), "main.tf")

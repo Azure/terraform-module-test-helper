@@ -2,11 +2,11 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
-	"github.com/spf13/afero"
-
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/r3labs/diff/v3"
+	"github.com/spf13/afero"
+	"os"
 )
 
 type ChangeCategory = string
@@ -36,24 +36,23 @@ func (c Change) ToString() string {
 }
 
 func BreakingChangesDetect(owner, repo, currentModulePath string) (string, error) {
-	currentMajorVer, err := GetCurrentMajorVersionFromEnv()
+	tmpDirForLatestDefaultBranch, err := cloneGithubRepo(owner, repo, nil)
 	if err != nil {
 		return "", err
 	}
-	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
-	if err != nil {
-		return "", err
-	}
-	tmpDirForTag, err := getTagCode(owner, repo, latestTag)
-	if err != nil {
-		return "", err
-	}
+	defer func() {
+		_ = os.RemoveAll(tmpDirForLatestDefaultBranch)
+	}()
+	return CompareTwoModules(tmpDirForLatestDefaultBranch, currentModulePath)
+}
+
+func CompareTwoModules(dir1 string, dir2 string) (string, error) {
 	fs := afero.Afero{Fs: afero.OsFs{}}
-	oldModule, err := NewModule(tmpDirForTag, fs)
+	oldModule, err := NewModule(dir1, fs)
 	if err != nil {
 		return "", err
 	}
-	currentModule, err := NewModule(currentModulePath, fs)
+	currentModule, err := NewModule(dir2, fs)
 	if err != nil {
 		return "", err
 	}
