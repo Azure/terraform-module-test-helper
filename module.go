@@ -15,7 +15,6 @@ type Module struct {
 	*tfconfig.Module
 	OutputExts   map[string]Output
 	VariableExts map[string]Variable
-	dir          string
 	fs           afero.Afero
 }
 
