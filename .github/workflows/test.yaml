@@ -20,16 +20,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.19
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
-        with:
-            args: -tests ./...
       - name: Go test
         run: |
           go test ./...
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
