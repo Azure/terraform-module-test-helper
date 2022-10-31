@@ -137,6 +137,7 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 }
 
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
+	/* #nosec 101 */
 	//goland:noinspection GoUnhandledErrorResult
 	os.Setenv("MODULE_SOURCE", currentModulePath)
 	err := renderOverrideFile(moduleDir)
@@ -156,6 +157,7 @@ func renderOverrideFile(moduleDir string) error {
 	if err != nil {
 		return err
 	}
+	/* #nosec G307 */
 	//goland:noinspection GoUnhandledErrorResult
 	defer dstFs.Close()
 	if err = tplt.Execute(dstFs, err); err != nil {
