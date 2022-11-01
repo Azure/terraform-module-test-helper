@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -17,7 +18,7 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 		t.Fatalf(err.Error())
 	}
 	option.TerraformDir = tmpDir
-	defer terraform.Destroy(t, &option)
+	defer destroy(t, option)
 	terraform.InitAndApply(t, &option)
 	if err := initAndPlanAndIdempotentAtEasyMode(t, option); err != nil {
 		t.Fatalf(err.Error())
@@ -25,6 +26,15 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	if assertion != nil {
 		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}
+}
+
+func destroy(t *testing.T, option terraform.Options) {
+	option.MaxRetries = 10
+	option.TimeBetweenRetries = time.Minute
+	option.RetryableTerraformErrors = map[string]string{
+		".*": "Retry destroy on any error",
+	}
+	terraform.Destroy(t, &option)
 }
 
 func removeLogger(option terraform.Options) *terraform.Options {

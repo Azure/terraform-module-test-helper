@@ -100,7 +100,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 
 func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir string, newModulePath string) error {
 	opts.TerraformDir = originTerraformDir
-	defer terraform.Destroy(t, &opts)
+	defer destroy(t, opts)
 	terraform.InitAndApply(t, &opts)
 	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
 	return initAndPlanAndIdempotentAtEasyMode(t, opts)
