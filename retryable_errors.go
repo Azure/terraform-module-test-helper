@@ -2,26 +2,22 @@ package terraform_module_test_helper
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
-	"os"
 	"testing"
 )
 
-func ReadRetryableErrors(f *os.File, t *testing.T) map[string]string {
+func ReadRetryableErrors(retryableCfg []byte, t *testing.T) map[string]string {
 	cfg := struct {
 		RetryableErrors []string `json:"retryable_errors"`
 	}{}
 
-	byteValue, _ := io.ReadAll(f)
-	err := json.Unmarshal(byteValue, &cfg)
+	err := json.Unmarshal(retryableCfg, &cfg)
 	if err != nil {
-		t.Fatalf("cannot unmarshal retryable_errors.hcl.json")
+		t.Fatalf("cannot unmarshal retryable config, must be and valid terragrunt `retryable_errors` config in json format.")
 	}
 	retryableRegexes := cfg.RetryableErrors
 	retryableErrors := make(map[string]string)
 	for _, r := range retryableRegexes {
-		retryableErrors[r] = fmt.Sprintf("retryable errors set in %s", f.Name())
+		retryableErrors[r] = "retryable errors set by test"
 	}
 	return retryableErrors
 }

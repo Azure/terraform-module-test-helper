@@ -7,13 +7,13 @@ import (
 )
 
 func TestLoadRetryableErrors(t *testing.T) {
-	f, err := os.Open("retryable_errors_sample.hcl.json")
+	cfg, err := os.ReadFile("retryable_errors_sample.hcl.json")
 	if err != nil {
-		t.Fatalf("Cannot open test file")
+		t.Fatalf(err.Error())
 	}
-	retryableErrors := ReadRetryableErrors(f, t)
+	retryableErrors := ReadRetryableErrors(cfg, t)
 	assert.Equal(t, 1, len(retryableErrors))
 	desc, ok := retryableErrors["GatewayTimeout"]
 	assert.True(t, ok)
-	assert.Equal(t, "retryable errors set in retryable_errors_sample.hcl.json", desc)
+	assert.Equal(t, "retryable errors set by test", desc)
 }
