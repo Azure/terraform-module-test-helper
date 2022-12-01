@@ -2,24 +2,22 @@ package terraform_module_test_helper
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/gruntwork-io/terratest/modules/logger"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
-	"text/template"
 
-	"github.com/Masterminds/sprig"
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/google/go-github/v42/github"
 	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/hashicorp/go-getter/v2"
 	"github.com/hashicorp/terraform-json"
+	"github.com/lonegunmanb/tfmodredirector"
 	"golang.org/x/mod/semver"
 )
 
@@ -139,29 +137,41 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
 	/* #nosec 101 */
 	//goland:noinspection GoUnhandledErrorResult
-	os.Setenv("MODULE_SOURCE", currentModulePath)
-	err := renderOverrideFile(moduleDir)
+	err := rewriteHcl(moduleDir, currentModulePath)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
-func renderOverrideFile(moduleDir string) error {
-	templatePath := filepath.Join(moduleDir, "override.tf.tplt")
-	if _, err := os.Stat(templatePath); errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	tplt := template.Must(template.New("override.tf.tplt").Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath))
-	dstOverrideTf := filepath.Join(moduleDir, "override.tf")
-	dstFs, err := createOrOverwrite(dstOverrideTf)
+func rewriteHcl(moduleDir, newModuleSource string) error {
+	entries, err := os.ReadDir(moduleDir)
 	if err != nil {
 		return err
 	}
-	/* #nosec G307 */
-	//goland:noinspection GoUnhandledErrorResult
-	defer dstFs.Close()
-	if err = tplt.Execute(dstFs, err); err != nil {
-		return fmt.Errorf("cannot write override.tf for %s:%s", dstOverrideTf, err.Error())
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tf") {
+			continue
+		}
+		if newModuleSource != "" {
+			filePath := filepath.Join(moduleDir, entry.Name())
+			f, err := os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+			tfCode := string(f)
+			tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../../", newModuleSource)
+			if err != nil {
+				return err
+			}
+			tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../..", newModuleSource)
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(filePath, []byte(tfCode), os.ModePerm)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

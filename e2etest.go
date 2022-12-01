@@ -14,7 +14,7 @@ type TerraformOutput = map[string]interface{}
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	option = retryableOptions(t, option)
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
-	if err := renderOverrideFile(tmpDir); err != nil {
+	if err := rewriteHcl(tmpDir, ""); err != nil {
 		t.Fatalf(err.Error())
 	}
 	option.TerraformDir = tmpDir

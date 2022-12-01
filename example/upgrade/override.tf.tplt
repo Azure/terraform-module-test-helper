@@ -1,3 +1,0 @@
-resource "null_resource" "failed_if_present" {
-  count = 1
-}
