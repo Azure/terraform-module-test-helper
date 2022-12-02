@@ -153,7 +153,7 @@ func rewriteHcl(moduleDir, newModuleSource string) error {
 			continue
 		}
 		if newModuleSource != "" {
-			filePath := filepath.Join(moduleDir, entry.Name())
+			filePath := filepath.Clean(filepath.Join(moduleDir, entry.Name()))
 			f, err := os.ReadFile(filePath)
 			if err != nil {
 				return err
