@@ -176,27 +176,6 @@ func rewriteHcl(moduleDir, newModuleSource string) error {
 	return nil
 }
 
-func createOrOverwrite(dstOverrideTf string) (*os.File, error) {
-	if err := removeIfExist(dstOverrideTf); err != nil {
-		return nil, err
-	}
-	dstFs, err := os.Create(filepath.Clean(dstOverrideTf))
-	if err != nil {
-		return nil, fmt.Errorf("cannot create dst override file:%s", err.Error())
-	}
-	return dstFs, nil
-}
-
-func removeIfExist(dstOverrideTf string) error {
-	if _, err := os.Stat(dstOverrideTf); err == nil {
-		err = os.Remove(dstOverrideTf)
-		if err != nil {
-			return fmt.Errorf("cannot delete dst override file:%s", err.Error())
-		}
-	}
-	return nil
-}
-
 var cloneGithubRepo = func(owner string, repo string, tag *string) (string, error) {
 	repoUrl := fmt.Sprintf("github.com/%s/%s", owner, repo)
 	dirPath := []string{os.TempDir(), owner, repo}
