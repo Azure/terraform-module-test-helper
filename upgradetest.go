@@ -135,8 +135,6 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 }
 
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
-	/* #nosec 101 */
-	//goland:noinspection GoUnhandledErrorResult
 	err := rewriteHcl(moduleDir, currentModulePath)
 	if err != nil {
 		t.Errorf(err.Error())
