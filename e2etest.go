@@ -34,7 +34,7 @@ func destroy(t *testing.T, option terraform.Options) {
 	option.RetryableTerraformErrors = map[string]string{
 		".*": "Retry destroy on any error",
 	}
-	terraform.Destroy(t, &option)
+	terraform.RunTerraformCommand(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
 }
 
 func removeLogger(option terraform.Options) *terraform.Options {
