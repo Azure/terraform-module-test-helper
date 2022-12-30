@@ -1,6 +1,7 @@
 package terraform_module_test_helper
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -34,7 +35,8 @@ func destroy(t *testing.T, option terraform.Options) {
 	option.RetryableTerraformErrors = map[string]string{
 		".*": "Retry destroy on any error",
 	}
-	terraform.RunTerraformCommand(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
+	_, err := terraform.RunTerraformCommandE(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
+	require.NoError(t, err)
 }
 
 func removeLogger(option terraform.Options) *terraform.Options {
