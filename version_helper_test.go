@@ -51,8 +51,8 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 	defer stub.Reset()
 	err := RecordVersionSnapshot(t, ".", filepath.Join("example", "basic"))
 	require.Nil(t, err)
-	file, err := os.ReadFile(tmpPath)
+	file, err := os.ReadFile(filepath.Clean(tmpPath))
 	require.Nil(t, err)
 	require.Equal(t, snapshot.ToString(), string(file))
-	require.True(t, files.FileExists(tmpPath))
+	require.True(t, files.FileExists(filepath.Clean(tmpPath)))
 }
