@@ -55,7 +55,7 @@ func GetVersion(t *testing.T, rootFolder, terraformModuleFolder string) TestVers
 
 func RecordVersionSnapshot(t *testing.T, rootFolder, terraformModuleFolder string) error {
 	path := filepath.Join(rootFolder, terraformModuleFolder, "TestRecord.md.tmp")
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return err
 	}
