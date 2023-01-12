@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"bufio"
 	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/prashantv/gostub"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
@@ -39,13 +40,16 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 	defer func() {
 		_ = os.Remove(tmpPath)
 	}()
-
 	snapshot := TestVersionSnapshot{
 		Time:    time.Now(),
 		Success: true,
 		Output:  "Content",
 	}
-	err := RecordVersionSnapshot(snapshot, ".", filepath.Join("example", "basic"))
+	stub := gostub.Stub(&generateVersionSnapshot, func(t *testing.T, rootFolder, terraformModuleFolder string) TestVersionSnapshot {
+		return snapshot
+	})
+	defer stub.Reset()
+	err := RecordVersionSnapshot(t, ".", filepath.Join("example", "basic"))
 	require.Nil(t, err)
 	file, err := os.ReadFile(tmpPath)
 	require.Nil(t, err)
