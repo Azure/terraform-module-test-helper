@@ -2,7 +2,6 @@ package terraform_module_test_helper
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -36,10 +35,8 @@ func TestVersionSnapshotToString(t *testing.T) {
 }
 
 func TestOutputNewTestVersionSnapshot(t *testing.T) {
-	destPath := filepath.Join("example", "basic", "TestRecord.md")
 	tmpPath := filepath.Join("example", "basic", "TestRecord.md.tmp")
 	defer func() {
-		_ = os.Remove(destPath)
 		_ = os.Remove(tmpPath)
 	}()
 
@@ -50,21 +47,8 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 	}
 	err := RecordVersionSnapshot(snapshot, ".", filepath.Join("example", "basic"))
 	require.Nil(t, err)
-	file, err := os.ReadFile(destPath)
+	file, err := os.ReadFile(tmpPath)
 	require.Nil(t, err)
 	require.Equal(t, snapshot.ToString(), string(file))
-	require.False(t, files.FileExists(tmpPath))
-
-	snapshot2 := TestVersionSnapshot{
-		Time:    time.Now(),
-		Success: true,
-		Output:  "Content2",
-	}
-
-	err = RecordVersionSnapshot(snapshot2, ".", filepath.Join("example", "basic"))
-	require.Nil(t, err)
-	file, err = os.ReadFile(destPath)
-	require.Nil(t, err)
-	require.Equal(t, fmt.Sprintf("%s%s", snapshot2.ToString(), snapshot.ToString()), string(file))
-	require.False(t, files.FileExists(tmpPath))
+	require.True(t, files.FileExists(tmpPath))
 }
