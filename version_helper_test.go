@@ -30,7 +30,7 @@ func TestVersionSnapshotToString(t *testing.T) {
 	require.True(t, scanner.Scan())
 	title := scanner.Text()
 	require.True(t, strings.HasPrefix(title, "## "))
-	require.Equal(t, snapshot.Time.Format(time.RFC822), strings.TrimLeft(title, "## "))
+	require.Equal(t, snapshot.Time.Format(time.RFC822), strings.TrimPrefix(title, "## "))
 	require.Contains(t, s, "Success: true")
 	require.Contains(t, s, snapshot.Output)
 }
