@@ -2,6 +2,8 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,6 +38,7 @@ func GetVersion(t *testing.T, rootFolder, terraformModuleFolder string) TestVers
 	options := terraform.Options{
 		TerraformDir: tmpPath,
 		NoColor:      true,
+		Logger:       logger.Discard,
 	}
 	output, err := terraform.InitE(t, &options)
 	if err != nil {
@@ -45,7 +48,7 @@ func GetVersion(t *testing.T, rootFolder, terraformModuleFolder string) TestVers
 			Output:  output,
 		}
 	}
-	output, err = terraform.RunTerraformCommandE(t, &options, "version", "-json")
+	output, err = terraform.RunTerraformCommandE(t, &options, "version")
 	return TestVersionSnapshot{
 		Time:    time.Now(),
 		Success: err == nil,
@@ -55,6 +58,12 @@ func GetVersion(t *testing.T, rootFolder, terraformModuleFolder string) TestVers
 
 func RecordVersionSnapshot(t *testing.T, rootFolder, terraformModuleFolder string) error {
 	path := filepath.Join(rootFolder, terraformModuleFolder, "TestRecord.md.tmp")
+	if files.FileExists(path) {
+		err := os.Remove(path)
+		if err != nil {
+			return err
+		}
+	}
 	f, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return err

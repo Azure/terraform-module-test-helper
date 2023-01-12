@@ -15,7 +15,7 @@ import (
 func TestGetVersionSnapshot(t *testing.T) {
 	version := GetVersion(t, "./", "example/basic")
 	require.NotEmpty(t, version.Output)
-	require.Contains(t, version.Output, "terraform_version")
+	require.Contains(t, version.Output, "Terraform v")
 	require.Contains(t, version.Output, "registry.terraform.io/hashicorp/null")
 }
 
