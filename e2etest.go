@@ -50,6 +50,5 @@ func removeLogger(option terraform.Options) *terraform.Options {
 
 func retryableOptions(t *testing.T, options terraform.Options) terraform.Options {
 	result := terraform.WithDefaultRetryableErrors(t, &options)
-	result.RetryableTerraformErrors[".*Please try again.*"] = "Service side suggest retry."
 	return *result
 }
