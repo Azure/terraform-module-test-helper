@@ -30,12 +30,15 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func destroy(t *testing.T, option terraform.Options) {
-	option.MaxRetries = 10
+	option.MaxRetries = 5
 	option.TimeBetweenRetries = time.Minute
 	option.RetryableTerraformErrors = map[string]string{
 		".*": "Retry destroy on any error",
 	}
-	_, err := terraform.RunTerraformCommandE(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
+	_, err := terraform.DestroyE(t, &option)
+	if err != nil {
+		_, err = terraform.RunTerraformCommandE(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
+	}
 	require.NoError(t, err)
 }
 
