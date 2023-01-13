@@ -1,13 +1,15 @@
 package terraform_module_test_helper
 
 import (
-	"github.com/stretchr/testify/require"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	"github.com/stretchr/testify/require"
 )
 
 type TerraformOutput = map[string]interface{}
@@ -29,6 +31,11 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func destroy(t *testing.T, option terraform.Options) {
+	path := option.TerraformDir
+	if !files.IsExistingDir(path) || !files.FileExists(filepath.Join(path, "terraform.tfstate")) {
+		return
+	}
+
 	option.MaxRetries = 5
 	option.TimeBetweenRetries = time.Minute
 	option.RetryableTerraformErrors = map[string]string{
