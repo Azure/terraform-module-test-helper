@@ -23,6 +23,7 @@ func (s TestVersionSnapshot) ToString() string {
 	return fmt.Sprintf(`## %s
 
 Success: %t
+
 %s
 
 ---
