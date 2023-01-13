@@ -34,9 +34,9 @@ func destroy(t *testing.T, option terraform.Options) {
 	option.RetryableTerraformErrors = map[string]string{
 		".*": "Retry destroy on any error",
 	}
-	_, err := terraform.DestroyE(t, &option)
+	_, err := terraform.RunTerraformCommandE(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
 	if err != nil {
-		_, err = terraform.RunTerraformCommandE(t, &option, terraform.FormatArgs(&option, "destroy", "-auto-approve", "-input=false", "-refresh=false")...)
+		_, err = terraform.DestroyE(t, &option)
 	}
 	require.NoError(t, err)
 }
