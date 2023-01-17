@@ -3,7 +3,6 @@ package terraform_module_test_helper
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"path/filepath"
 	"log"
 	"math/rand"
 	"os"
