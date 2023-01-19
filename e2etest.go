@@ -27,10 +27,14 @@ var ch2 = make(chan string)
 
 func init() {
 	println("=> init")
-	go record()
+	l := NewStreamTestLogger()
+	// init() 里面 global make chan, 新建 goroutine 监听 chan，打印到 stdout，release
+	go record(l)
 }
 
-func record() {
+func record(l *StreamTestLogger) {
+	l.Listen()
+
 	for {
 		// 收到一个地址，打开临时文件，读取，关掉文件
 		tempFileDir := <-ch1
@@ -50,63 +54,98 @@ var _ logger.TestLogger = &StreamTestLogger{}
 
 type StreamTestLogger struct {
 	exampleName string
-	stream      io.ReadWriter
-	ch          chan string
+	stream      io.ReadWriteCloser
+	ch          chan byte
 }
 
-func (f *StreamTestLogger) Logf(t terratest.TestingT, format string, args ...interface{}) {
-	tempFile, err := os.OpenFile(f.tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		log.Fatal(err)
+func (l *StreamTestLogger) Logf(t terratest.TestingT, format string, args ...interface{}) {
+	logger.DoLog(t, 3, l.stream.(io.Writer), fmt.Sprintf(format, args...))
+}
+
+func NewStreamTestLogger() *StreamTestLogger {
+	return &StreamTestLogger{}
+}
+
+func (l *StreamTestLogger) Chan() <-chan byte {
+	return l.ch
+}
+
+func (l *StreamTestLogger) ReadFrom(num int) ([]byte, error) {
+	p := make([]byte, num)
+	n, err := l.stream.(io.Reader).Read(p)
+	if n > 0 {
+		return p[:n], nil
 	}
-	logger.DoLog(t, 3, tempFile, fmt.Sprintf(format, args...))
+	return p, err
 }
 
-func NewStreamTestLogger(exName string, rw io.ReadWriter) *StreamTestLogger {
-	return &StreamTestLogger{
-		exampleName: exName,
-		stream:      rw,
+func (l *StreamTestLogger) WriteTo(p []byte) (int, error) {
+	return fmt.Fprintln(l.stream.(io.Writer), p)
+}
+
+func (l *StreamTestLogger) WriteToChan(p []byte) (int, error) {
+	n := 0
+	for _, b := range p {
+		l.ch <- p[b]
+		n++
 	}
+	return n, nil
 }
 
-func (f *StreamTestLogger) OpenFile() error {
+func (l *StreamTestLogger) OpenFile() error {
 	// file stream
-	tempFilePath := fmt.Sprintf("%s/test%s%d", os.TempDir(), f.exampleName, rand.Intn(100))
+	tempFilePath := fmt.Sprintf("%s/test%s%d", os.TempDir(), l.exampleName, rand.Intn(100))
 	tempFile, err := os.OpenFile(tempFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
-	f.stream = make([]byte)
+	l.stream = io.ReadWriteCloser(tempFile)
+	return nil
 }
 
-func (f *StreamTestLogger) OpenMemory() error {
-	// io buffer?
-	f.stream = new(bytes.Buffer)
+// TODO: io buffer?
+func (l *StreamTestLogger) OpenMemory() error {
+	buf := bytes.Buffer{}
+	buff := make([]byte, 1024)
+	l.stream = io.ReadWriteCloser(buf)
+	return nil
 }
 
-func (f *StreamTestLogger) Close() {
-	closer, ok := f.stream.(io.Closer)
-	if ok == true {
-		f.stream.Close()
+func (l *StreamTestLogger) Close() error {
+	//closer, ok := l.stream.(io.Closer)
+	//if ok == true {
+	//	l.stream.Close()
+	//} else {
+	//	return ok
+	//}
+	err := l.stream.(io.Closer).Close()
+	if err != nil {
+		log.Fatal(err)
 	}
+	return err
 }
 
-func (f *StreamTestLogger) Listen() {
+func (l *StreamTestLogger) Listen() {
 	// init() 里面 global make chan, 新建 goroutine 监听 chan，打印到 stdout，release
-	f.ch = make(chan string)
-	io.Copy(os.Stdout, f.stream.(io.Reader))
+	l.ch = make(chan byte, 1024)
+	_, err := io.Copy(os.Stdout, l.stream.(io.Reader))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	// release
 }
 
 func PrepareFile(exampleRelativePath string) string {
 	exampleName := strings.Split(exampleRelativePath, "/")[1]
-	tempFileDir := fmt.Sprintf("%s/test%s%d", os.TempDir(), exampleName, rand.Intn(100))
-	tempFile, err := os.OpenFile(tempFileDir, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	tempFilePath := fmt.Sprintf("%s/test%s%d", os.TempDir(), exampleName, rand.Intn(100))
+	tempFile, err := os.OpenFile(tempFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tempFile.Close()
-	return tempFileDir
+	return tempFilePath
 }
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
