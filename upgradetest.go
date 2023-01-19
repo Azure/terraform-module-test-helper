@@ -74,6 +74,9 @@ func unwrap(t interface{}) interface{} {
 }
 
 func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
+	if currentMajorVer == 0 {
+		return SkipV0Error
+	}
 	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
 	if err != nil {
 		return err
