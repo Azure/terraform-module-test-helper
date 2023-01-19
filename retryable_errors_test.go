@@ -1,9 +1,10 @@
 package terraform_module_test_helper
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadRetryableErrors(t *testing.T) {

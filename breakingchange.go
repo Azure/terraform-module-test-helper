@@ -2,11 +2,12 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/r3labs/diff/v3"
 	"github.com/spf13/afero"
-	"os"
 )
 
 type ChangeCategory = string

@@ -1,13 +1,13 @@
 package terraform_module_test_helper
 
 import (
-	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/google/go-github/v42/github"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/prashantv/gostub"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/mod/semver"

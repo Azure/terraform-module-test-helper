@@ -2,14 +2,15 @@ package terraform_module_test_helper
 
 import (
 	"bufio"
-	"github.com/gruntwork-io/terratest/modules/files"
-	"github.com/prashantv/gostub"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/prashantv/gostub"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetVersionSnapshot(t *testing.T) {

@@ -2,13 +2,13 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/terratest/modules/files"
-	"github.com/gruntwork-io/terratest/modules/logger"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
