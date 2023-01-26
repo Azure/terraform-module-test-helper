@@ -1,27 +1,19 @@
 package terraform_module_test_helper
 
 import (
-	"bytes"
-	"fmt"
-	"github.com/stretchr/testify/require"
-	"io"
-	"log"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
-	terratest "github.com/gruntwork-io/terratest/modules/testing"
+	"github.com/stretchr/testify/require"
+	"path/filepath"
+	"testing"
+	"time"
 )
 
 type TerraformOutput = map[string]interface{}
 
+/*
 var ch1 = make(chan string)
 var ch2 = make(chan string)
 
@@ -103,15 +95,17 @@ func (l *StreamTestLogger) OpenFile() error {
 	l.stream = io.ReadWriteCloser(tempFile)
 	return nil
 }
+*/
 
 // TODO: io buffer?
-func (l *StreamTestLogger) OpenMemory() error {
-	buf := bytes.Buffer{}
-	buff := make([]byte, 1024)
-	l.stream = io.ReadWriteCloser(buf)
-	return nil
-}
+//func (l *StreamTestLogger) OpenMemory() error {
+//	buf := bytes.Buffer{}
+//	buff := make([]byte, 1024)
+//	l.stream = io.ReadWriteCloser(buf)
+//	return nil
+//}
 
+/*
 func (l *StreamTestLogger) Close() error {
 	//closer, ok := l.stream.(io.Closer)
 	//if ok == true {
@@ -147,6 +141,7 @@ func PrepareFile(exampleRelativePath string) string {
 	defer tempFile.Close()
 	return tempFilePath
 }
+*/
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	t.Parallel()
@@ -159,17 +154,17 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 
 	// create or open a temp log file
 	//tempFilePath := PrepareFile(exampleRelativePath)
-	exampleName := strings.Split(exampleRelativePath, "/")[1]
+	//exampleName := strings.Split(exampleRelativePath, "/")[1]
 
 	//option.Logger = logger.Terratest
-	option.Logger = logger.New(&StreamTestLogger{
-		exampleName: exampleName,
-	})
+	//option.Logger = logger.New(&StreamTestLogger{
+	//	exampleName: exampleName,
+	//})
 	// defer file.close()
 
 	// option.NoColor = true
 
-	defer destroy1(t, tempFilePath, option)
+	//defer destroy1(t, tempFilePath, option)
 
 	terraform.InitAndApply(t, &option)
 	if err := initAndPlanAndIdempotentAtEasyMode(t, option); err != nil {
@@ -183,7 +178,7 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func destroy1(t *testing.T, tempFilePath string, option terraform.Options) {
-	defer printLog(tempFilePath)
+	//defer printLog(tempFilePath)
 
 	option.MaxRetries = 10
 	option.TimeBetweenRetries = time.Minute
@@ -194,14 +189,14 @@ func destroy1(t *testing.T, tempFilePath string, option terraform.Options) {
 	require.NoError(t, err)
 }
 
-func printLog(tempFileDir string) {
-	// 把原来创建的临时文件关掉
-	// 把临时文件的地址发给 goroutine record()
-	ch1 <- tempFileDir
-	_ = <-ch2
-
-	// t.Failed()
-}
+//func printLog(tempFileDir string) {
+//	// 把原来创建的临时文件关掉
+//	// 把临时文件的地址发给 goroutine record()
+//	ch1 <- tempFileDir
+//	_ = <-ch2
+//
+//	// t.Failed()
+//}
 
 func destroy(t *testing.T, option terraform.Options) {
 	path := option.TerraformDir
