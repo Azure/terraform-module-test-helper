@@ -14,7 +14,7 @@ import (
  */
 func TestStreamLoggerShouldLogSth(t *testing.T) {
 	buff := new(bytes.Buffer)
-	var l *StreamLogger = NewStreamLogger(buff)
+	l := NewStreamLogger(buff)
 	log := "hello"
 	l.Logf(t, log)
 	assert.Contains(t, buff.String(), log)
