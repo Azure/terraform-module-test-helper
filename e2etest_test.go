@@ -26,10 +26,10 @@ func TestE2EExampleTest(t *testing.T) {
 }
 
 func TestE2EExample(t *testing.T) {
-	RunE2ETest(t, "./", "example/basic2", terraform.Options{
+	RunE2ETest(t, "./", "example/basic", terraform.Options{
 		Upgrade: true,
 	}, func(t *testing.T, output TerraformOutput) {
-		resId, ok := output["resource_id2"].(string)
+		resId, ok := output["resource_id"].(string)
 		assert.True(t, ok)
 		assert.NotEqual(t, "", resId, "expected output `resource_id`")
 	})
