@@ -14,7 +14,7 @@ import (
 )
 
 func TestGetVersionSnapshot(t *testing.T) {
-	version := GetVersion(t, "./", "example/basic")
+	version := NewVersionSnapshot(t, "./", "example/basic", true)
 	require.NotEmpty(t, version.Output)
 	require.Contains(t, version.Output, "Terraform v")
 	require.Contains(t, version.Output, "registry.terraform.io/hashicorp/null")
@@ -46,11 +46,11 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 		Success: true,
 		Output:  "Content",
 	}
-	stub := gostub.Stub(&generateVersionSnapshot, func(t *testing.T, rootFolder, terraformModuleFolder string) TestVersionSnapshot {
+	stub := gostub.Stub(&generateVersionSnapshot, func(t *testing.T, rootFolder, terraformModuleFolder string, success bool) TestVersionSnapshot {
 		return snapshot
 	})
 	defer stub.Reset()
-	err := RecordVersionSnapshot(t, ".", filepath.Join("example", "basic"))
+	err := RecordVersionSnapshot(t, ".", filepath.Join("example", "basic"), true)
 	require.Nil(t, err)
 	file, err := os.ReadFile(filepath.Clean(tmpPath))
 	require.Nil(t, err)
