@@ -2,6 +2,8 @@ package terraform_module_test_helper
 
 import (
 	"bufio"
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,15 +11,18 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/terraform"
+	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/prashantv/gostub"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetVersionSnapshot(t *testing.T) {
-	version := NewVersionSnapshot(t, "./", "example/basic", true)
-	require.NotEmpty(t, version.Output)
-	require.Contains(t, version.Output, "Terraform v")
-	require.Contains(t, version.Output, "registry.terraform.io/hashicorp/null")
+	s := SuccessTestVersionSnapshot("./", "example/basic")
+	s.runVersionSnapshot(t)
+	require.NotEmpty(t, s.Output)
+	require.Contains(t, s.Output, "Terraform v")
+	require.Contains(t, s.Output, "registry.terraform.io/hashicorp/null")
 }
 
 func TestVersionSnapshotToString(t *testing.T) {
@@ -41,19 +46,49 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 	defer func() {
 		_ = os.Remove(tmpPath)
 	}()
-	snapshot := TestVersionSnapshot{
-		Time:    time.Now(),
-		Success: true,
-		Output:  "Content",
-	}
-	stub := gostub.Stub(&generateVersionSnapshot, func(t *testing.T, rootFolder, terraformModuleFolder string, success bool) TestVersionSnapshot {
-		return snapshot
+	content := "Content"
+	stub := gostub.Stub(&initE, func(terratest.TestingT, *terraform.Options) (string, error) {
+		return "", nil
 	})
 	defer stub.Reset()
-	err := RecordVersionSnapshot(t, ".", filepath.Join("example", "basic"), true)
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+		return content, nil
+	})
+	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
+	err := s.RecordVersionSnapshot(t)
 	require.Nil(t, err)
 	file, err := os.ReadFile(filepath.Clean(tmpPath))
+	s.Output = content
 	require.Nil(t, err)
-	require.Equal(t, snapshot.ToString(), string(file))
+	require.Equal(t, s.ToString(), string(file))
 	require.True(t, files.FileExists(filepath.Clean(tmpPath)))
+}
+
+
+func TestVersionSnapshotRecord_initCommandErrorShouldReturnInitCommandError(t *testing.T) {
+	expectedOutput := "init error"
+	stub := gostub.Stub(&initE, func(terratest.TestingT, *terraform.Options) (string, error) {
+		return expectedOutput, fmt.Errorf("init error")
+	})
+	defer stub.Reset()
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+		return "not expected output", nil
+	})
+	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
+	s.runVersionSnapshot(t)
+	assert.Equal(t, expectedOutput, s.Output)
+}
+
+func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandError(t *testing.T) {
+	expectedOutput := "version command error"
+	stub := gostub.Stub(&initE, func(terratest.TestingT, *terraform.Options) (string, error) {
+		return "not expected output", nil
+	})
+	defer stub.Reset()
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+		return expectedOutput, fmt.Errorf(expectedOutput)
+	})
+	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
+	s.runVersionSnapshot(t)
+	assert.Equal(t, expectedOutput, s.Output)
 }
