@@ -6,44 +6,26 @@ import (
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/stretchr/testify/require"
-	"log"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
 
 type TerraformOutput = map[string]interface{}
 
-func record() {
-	SerializedLogger.mu.Lock()
-	//_, err := io.Copy(SerializedLogger.stream, os.Stdout)
-	//if err != nil {
-	//	log.Fatal()
-	//}
-	SerializedLogger.mu.Unlock()
-}
-
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
+	t.Parallel()
+
 	option = retryableOptions(t, option)
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	if err := rewriteHcl(tmpDir, ""); err != nil {
 		t.Fatalf(err.Error())
 	}
 	option.TerraformDir = tmpDir
-	option.NoColor = true
 
-	if !files.IsExistingDir("logs") {
-		os.Mkdir("logs", 0644)
-	}
-	logFileName := "logs/" + strings.Split(exampleRelativePath, "/")[1] + "_log.txt"
-	f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	option.Logger = logger.New(NewStreamLogger(f))
+	l := NewMemoryLogger()
+	defer l.Close()
+	option.Logger = logger.New(l)
 	defer destroy(t, option)
 
 	terraform.InitAndApply(t, &option)
@@ -71,8 +53,6 @@ func destroy(t *testing.T, option terraform.Options) {
 		_, err = terraform.DestroyE(t, &option)
 	}
 	require.NoError(t, err)
-
-	record()
 }
 
 func removeLogger(option terraform.Options) *terraform.Options {
