@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestE2EExample(t *testing.T) {
+func TestE2EExampleTest(t *testing.T) {
 	RunE2ETest(t, "./", "example/basic", terraform.Options{
 		Upgrade: true,
 	}, func(t *testing.T, output TerraformOutput) {
