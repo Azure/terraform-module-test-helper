@@ -9,19 +9,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
 type TerraformOutput = map[string]interface{}
 
-func init() {
-	println("=> init")
-	go record()
-}
-
 func record() {
-
+	SerializedLogger.mu.Lock()
+	//_, err := io.Copy(SerializedLogger.stream, os.Stdout)
+	//if err != nil {
+	//	log.Fatal()
+	//}
+	SerializedLogger.mu.Unlock()
 }
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
@@ -31,15 +32,18 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 		t.Fatalf(err.Error())
 	}
 	option.TerraformDir = tmpDir
-
 	option.NoColor = true
-	f, err := os.OpenFile("logs.txt", os.O_CREATE|os.O_RDWR, 0644)
+
+	if !files.IsExistingDir("logs") {
+		os.Mkdir("logs", 0644)
+	}
+	logFileName := "logs/" + strings.Split(exampleRelativePath, "/")[1] + "_log.txt"
+	f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
 	option.Logger = logger.New(NewStreamLogger(f))
-	//option.Logger = logger.New(NewStreamLogger(buff))
 	defer destroy(t, option)
 
 	terraform.InitAndApply(t, &option)
@@ -67,6 +71,8 @@ func destroy(t *testing.T, option terraform.Options) {
 		_, err = terraform.DestroyE(t, &option)
 	}
 	require.NoError(t, err)
+
+	record()
 }
 
 func removeLogger(option terraform.Options) *terraform.Options {
