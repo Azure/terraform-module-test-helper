@@ -22,7 +22,8 @@ type TestVersionSnapshot struct {
 	SubModuleRelativeFolder string
 	Time                    time.Time
 	Success                 bool
-	Output                  string
+	Versions                string
+	ErrorMsg                string
 }
 
 func SuccessTestVersionSnapshot(rootFolder, exampleRelativePath string) TestVersionSnapshot {
@@ -40,7 +41,7 @@ func FailedTestVersionSnapshot(rootFolder, exampleRelativePath, errMsg string) T
 		SubModuleRelativeFolder: exampleRelativePath,
 		Time:                    time.Now(),
 		Success:                 false,
-		Output:                  errMsg,
+		ErrorMsg:                errMsg,
 	}
 }
 
@@ -49,11 +50,17 @@ func (s *TestVersionSnapshot) ToString() string {
 
 Success: %t
 
+### Versions
+
+%s
+
+### Error
+
 %s
 
 ---
 
-`, s.Time.Format(time.RFC822), s.Success, s.Output)
+`, s.Time.Format(time.RFC822), s.Success, s.Versions, s.ErrorMsg)
 }
 
 func (s *TestVersionSnapshot) RecordVersionSnapshot(t *testing.T) error {
@@ -62,24 +69,14 @@ func (s *TestVersionSnapshot) RecordVersionSnapshot(t *testing.T) error {
 		return err
 	}
 	_, dir := filepath.Split(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder))
-	return copyFile(tmpFilePath, filepath.Join(s.ModuleRootFolder, "TestRecord", dir, "TestRecord.md.tmp"))
+	pathForUpload := filepath.Join(s.ModuleRootFolder, "TestRecord", dir, "TestRecord.md.tmp")
+	return copyFile(tmpFilePath, pathForUpload)
 }
 
 func (s *TestVersionSnapshot) createTempRecordFile(t *testing.T) (string, error) {
+	s.loadVersionSnapshot(t)
 	path := filepath.Clean(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder, "TestRecord.md.tmp"))
-	if files.FileExists(path) {
-		if err := os.Remove(path); err != nil {
-			return "", err
-		}
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = f.Close() }()
-
-	s.runVersionSnapshot(t)
-	_, err = f.WriteString(s.ToString())
+	err := writeStringToFile(path, s.ToString())
 	return path, err
 }
 
@@ -114,28 +111,41 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
-func (s *TestVersionSnapshot) runVersionSnapshot(t *testing.T) {
-	tmpPath := test_structure.CopyTerraformFolderToTemp(t, s.ModuleRootFolder, s.SubModuleRelativeFolder)
+func writeStringToFile(filePath, str string) error {
+	if files.FileExists(filePath) {
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+	}
+	f, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	_, err = f.WriteString(str)
+	return err
+}
+
+func (s *TestVersionSnapshot) loadVersionSnapshot(t *testing.T) {
+	tmpDir := test_structure.CopyTerraformFolderToTemp(t, s.ModuleRootFolder, s.SubModuleRelativeFolder)
 	defer func() {
-		_ = os.RemoveAll(tmpPath)
+		_ = os.RemoveAll(tmpDir)
 	}()
-	options := terraform.Options{
-		TerraformDir: tmpPath,
+	opts := terraform.Options{
+		TerraformDir: tmpDir,
 		NoColor:      true,
 		Logger:       logger.Discard,
 	}
-	if output, err := initE(t, &options); err != nil {
+	if output, err := initE(t, &opts); err != nil {
 		s.Success = false
-		s.Output = output
+		s.ErrorMsg = output
 		return
 	}
-	output, err := runTerraformCommandE(t, &options, "version")
+	output, err := runTerraformCommandE(t, &opts, "version")
 	if err != nil {
 		s.Success = false
-		s.Output = output
+		s.ErrorMsg = output
 		return
 	}
-	if s.Success {
-		s.Output = output
-	}
+	s.Versions = output
 }

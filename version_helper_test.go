@@ -19,17 +19,17 @@ import (
 
 func TestGetVersionSnapshot(t *testing.T) {
 	s := SuccessTestVersionSnapshot("./", "example/basic")
-	s.runVersionSnapshot(t)
-	require.NotEmpty(t, s.Output)
-	require.Contains(t, s.Output, "Terraform v")
-	require.Contains(t, s.Output, "registry.terraform.io/hashicorp/null")
+	s.loadVersionSnapshot(t)
+	require.NotEmpty(t, s.Versions)
+	require.Contains(t, s.Versions, "Terraform v")
+	require.Contains(t, s.Versions, "registry.terraform.io/hashicorp/null")
 }
 
 func TestVersionSnapshotToString(t *testing.T) {
 	snapshot := TestVersionSnapshot{
-		Time:    time.Now(),
-		Success: true,
-		Output:  "Content",
+		Time:     time.Now(),
+		Success:  true,
+		Versions: "Content",
 	}
 	s := snapshot.ToString()
 	scanner := bufio.NewScanner(strings.NewReader(s))
@@ -38,7 +38,7 @@ func TestVersionSnapshotToString(t *testing.T) {
 	require.True(t, strings.HasPrefix(title, "## "))
 	require.Equal(t, snapshot.Time.Format(time.RFC822), strings.TrimPrefix(title, "## "))
 	require.Contains(t, s, "Success: true")
-	require.Contains(t, s, snapshot.Output)
+	require.Contains(t, s, snapshot.Versions)
 }
 
 func TestOutputNewTestVersionSnapshot(t *testing.T) {
@@ -58,7 +58,7 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 	err := s.RecordVersionSnapshot(t)
 	require.Nil(t, err)
 	file, err := os.ReadFile(filepath.Clean(tmpPath))
-	s.Output = content
+	s.Versions = content
 	require.Nil(t, err)
 	require.Equal(t, s.ToString(), string(file))
 	require.True(t, files.FileExists(filepath.Clean(tmpPath)))
@@ -75,8 +75,8 @@ func TestVersionSnapshotRecord_initCommandErrorShouldReturnInitCommandError(t *t
 		return "not expected output", nil
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
-	s.runVersionSnapshot(t)
-	assert.Equal(t, expectedOutput, s.Output)
+	s.loadVersionSnapshot(t)
+	assert.Equal(t, expectedOutput, s.ErrorMsg)
 }
 
 func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandError(t *testing.T) {
@@ -89,6 +89,6 @@ func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandErro
 		return expectedOutput, fmt.Errorf(expectedOutput)
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
-	s.runVersionSnapshot(t)
-	assert.Equal(t, expectedOutput, s.Output)
+	s.loadVersionSnapshot(t)
+	assert.Equal(t, expectedOutput, s.ErrorMsg)
 }
