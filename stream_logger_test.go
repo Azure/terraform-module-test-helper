@@ -63,16 +63,15 @@ func TestStreamLoggerClose(t *testing.T) {
 	assert.Contains(t, destBuff.String(), log)
 }
 
-func TestStreamLoggerPipeIsSerialize(t *testing.T) {
-	log1 := "hello "
-	srcBuff1 := bytes.NewBufferString(log1)
-	srcLogger1 := NewStreamLogger(srcBuff1)
-
+func TestStreamLoggerPipeIsSerialized(t *testing.T) {
 	destBuff := new(bytes.Buffer)
 	dummyLogger := NewStreamLogger(destBuff)
 	stub := gostub.Stub(&SerializedLogger, dummyLogger)
 	defer stub.Reset()
 
+	log1 := "hello "
+	srcBuff1 := bytes.NewBufferString(log1)
+	srcLogger1 := NewStreamLogger(srcBuff1)
 	err := srcLogger1.Close()
 	require.Nil(t, err)
 	time.Sleep(500 * time.Millisecond)
@@ -82,6 +81,13 @@ func TestStreamLoggerPipeIsSerialize(t *testing.T) {
 	srcLogger2 := NewStreamLogger(srcBuff2)
 	err = srcLogger2.Close()
 	require.Nil(t, err)
+	time.Sleep(500 * time.Millisecond)
 
-	assert.Contains(t, destBuff.String(), log1+log2)
+	log3 := "!!!"
+	srcBuff3 := bytes.NewBufferString(log3)
+	srcLogger3 := NewStreamLogger(srcBuff3)
+	err = srcLogger3.Close()
+	require.Nil(t, err)
+
+	assert.Contains(t, destBuff.String(), log1+log2+log3)
 }
