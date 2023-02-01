@@ -16,3 +16,25 @@ func TestE2EExampleTest(t *testing.T) {
 		assert.NotEqual(t, "", resId, "expected output `resource_id`")
 	})
 }
+
+func TestE2EParallel(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		RunE2ETest(t, "./", "example/basic", terraform.Options{
+			Upgrade: true,
+		}, func(t *testing.T, output TerraformOutput) {
+			resId, ok := output["resource_id"].(string)
+			assert.True(t, ok)
+			assert.NotEqual(t, "", resId, "expected output `resource_id`")
+		})
+	})
+
+	t.Run("basic2", func(t *testing.T) {
+		RunE2ETest(t, "./", "example/basic2", terraform.Options{
+			Upgrade: true,
+		}, func(t *testing.T, output TerraformOutput) {
+			resId, ok := output["resource_id2"].(string)
+			assert.True(t, ok)
+			assert.NotEqual(t, "", resId, "expected output `resource_id`")
+		})
+	})
+}
