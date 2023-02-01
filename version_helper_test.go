@@ -19,7 +19,7 @@ import (
 
 func TestGetVersionSnapshot(t *testing.T) {
 	s := SuccessTestVersionSnapshot("./", "example/basic")
-	s.loadVersionSnapshot(t)
+	s.load(t)
 	require.NotEmpty(t, s.Versions)
 	require.Contains(t, s.Versions, "Terraform v")
 	require.Contains(t, s.Versions, "registry.terraform.io/hashicorp/null")
@@ -55,7 +55,7 @@ func TestOutputNewTestVersionSnapshot(t *testing.T) {
 		return content, nil
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
-	err := s.RecordVersionSnapshot(t)
+	err := s.Save(t)
 	require.Nil(t, err)
 	file, err := os.ReadFile(filepath.Clean(tmpPath))
 	s.Versions = content
@@ -75,7 +75,7 @@ func TestVersionSnapshotRecord_initCommandErrorShouldReturnInitCommandError(t *t
 		return "not expected output", nil
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
-	s.loadVersionSnapshot(t)
+	s.load(t)
 	assert.Equal(t, expectedOutput, s.ErrorMsg)
 }
 
@@ -89,6 +89,6 @@ func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandErro
 		return expectedOutput, fmt.Errorf(expectedOutput)
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
-	s.loadVersionSnapshot(t)
+	s.load(t)
 	assert.Equal(t, expectedOutput, s.ErrorMsg)
 }

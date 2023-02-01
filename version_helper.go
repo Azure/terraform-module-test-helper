@@ -63,18 +63,22 @@ Success: %t
 `, s.Time.Format(time.RFC822), s.Success, s.Versions, s.ErrorMsg)
 }
 
-func (s *TestVersionSnapshot) RecordVersionSnapshot(t *testing.T) error {
-	tmpFilePath, err := s.createTempRecordFile(t)
+func (s *TestVersionSnapshot) Save(t *testing.T) error {
+	s.load(t)
+	localPath, err := s.saveToLocal()
 	if err != nil {
 		return err
 	}
-	_, dir := filepath.Split(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder))
-	pathForUpload := filepath.Join(s.ModuleRootFolder, "TestRecord", dir, "TestRecord.md.tmp")
-	return copyFile(tmpFilePath, pathForUpload)
+	return s.copyForUploadArtifact(localPath)
 }
 
-func (s *TestVersionSnapshot) createTempRecordFile(t *testing.T) (string, error) {
-	s.loadVersionSnapshot(t)
+func (s *TestVersionSnapshot) copyForUploadArtifact(localPath string) error {
+	_, dir := filepath.Split(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder))
+	pathForUpload := filepath.Join(s.ModuleRootFolder, "TestRecord", dir, "TestRecord.md.tmp")
+	return copyFile(localPath, pathForUpload)
+}
+
+func (s *TestVersionSnapshot) saveToLocal() (string, error) {
 	path := filepath.Clean(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder, "TestRecord.md.tmp"))
 	err := writeStringToFile(path, s.ToString())
 	return path, err
@@ -126,7 +130,7 @@ func writeStringToFile(filePath, str string) error {
 	return err
 }
 
-func (s *TestVersionSnapshot) loadVersionSnapshot(t *testing.T) {
+func (s *TestVersionSnapshot) load(t *testing.T) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, s.ModuleRootFolder, s.SubModuleRelativeFolder)
 	defer func() {
 		_ = os.RemoveAll(tmpDir)
