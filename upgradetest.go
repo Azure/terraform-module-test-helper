@@ -153,25 +153,23 @@ func rewriteHcl(moduleDir, newModuleSource string) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tf") {
 			continue
 		}
-		if newModuleSource != "" {
-			filePath := filepath.Clean(filepath.Join(moduleDir, entry.Name()))
-			f, err := os.ReadFile(filePath)
-			if err != nil {
-				return err
-			}
-			tfCode := string(f)
-			tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../../", newModuleSource)
-			if err != nil {
-				return err
-			}
-			tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../..", newModuleSource)
-			if err != nil {
-				return err
-			}
-			err = os.WriteFile(filePath, []byte(tfCode), os.ModePerm)
-			if err != nil {
-				return err
-			}
+		filePath := filepath.Clean(filepath.Join(moduleDir, entry.Name()))
+		f, err := os.ReadFile(filePath)
+		if err != nil {
+			return err
+		}
+		tfCode := string(f)
+		tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../../", newModuleSource)
+		if err != nil {
+			return err
+		}
+		tfCode, err = tfmodredirector.RedirectModuleSource(tfCode, "../..", newModuleSource)
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(filePath, []byte(tfCode), os.ModePerm)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

@@ -18,9 +18,6 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	t.Parallel()
 
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
-	if err := rewriteHcl(tmpDir, ""); err != nil {
-		t.Fatalf(err.Error())
-	}
 	option.TerraformDir = tmpDir
 
 	l := NewMemoryLogger()
