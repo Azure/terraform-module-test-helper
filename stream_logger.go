@@ -3,11 +3,12 @@ package terraform_module_test_helper
 import (
 	"bytes"
 	"fmt"
-	"github.com/gruntwork-io/terratest/modules/logger"
-	"github.com/gruntwork-io/terratest/modules/testing"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/gruntwork-io/terratest/modules/logger"
+	"github.com/gruntwork-io/terratest/modules/testing"
 )
 
 var _ logger.TestLogger = new(StreamLogger)
@@ -43,9 +44,11 @@ func (s *StreamLogger) PipeFrom(srcLogger *StreamLogger) error {
 }
 
 func (s *StreamLogger) Close() error {
-	c, ok := s.stream.(io.Closer)
-	if ok {
-		defer func() { _ = c.Close() }()
-	}
+	defer func() {
+		c, ok := s.stream.(io.Closer)
+		if ok {
+			_ = c.Close()
+		}
+	}()
 	return serializedLogger.PipeFrom(s)
 }
