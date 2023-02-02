@@ -42,28 +42,28 @@ func TestVersionSnapshotToString(t *testing.T) {
 }
 
 func TestOutputNewTestVersionSnapshot(t *testing.T) {
-	tmpPath := filepath.Join("example", "basic", "TestRecord.md.tmp")
-	defer func() {
-		_ = os.Remove(tmpPath)
-	}()
+	localPath := filepath.Join("example", "basic", "TestRecord.md.tmp")
+	defer func() { _ = os.Remove(localPath) }()
+	uploadPath := filepath.Join("TestRecord", "basic", "TestRecord.md.tmp")
+	defer func() { _ = os.Remove(uploadPath) }()
 	content := "Content"
 	stub := gostub.Stub(&initE, func(terratest.TestingT, *terraform.Options) (string, error) {
 		return "", nil
 	})
 	defer stub.Reset()
-	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error) {
 		return content, nil
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
 	err := s.Save(t)
 	require.Nil(t, err)
-	file, err := os.ReadFile(filepath.Clean(tmpPath))
+	file, err := os.ReadFile(filepath.Clean(localPath))
 	s.Versions = content
 	require.Nil(t, err)
 	require.Equal(t, s.ToString(), string(file))
-	require.True(t, files.FileExists(filepath.Clean(tmpPath)))
+	require.True(t, files.FileExists(filepath.Clean(localPath)))
+	require.True(t, files.FileExists(filepath.Clean(uploadPath)))
 }
-
 
 func TestVersionSnapshotRecord_initCommandErrorShouldReturnInitCommandError(t *testing.T) {
 	expectedOutput := "init error"
@@ -71,7 +71,7 @@ func TestVersionSnapshotRecord_initCommandErrorShouldReturnInitCommandError(t *t
 		return expectedOutput, fmt.Errorf("init error")
 	})
 	defer stub.Reset()
-	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error) {
 		return "not expected output", nil
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
@@ -85,7 +85,7 @@ func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandErro
 		return "not expected output", nil
 	})
 	defer stub.Reset()
-	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error){
+	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error) {
 		return expectedOutput, fmt.Errorf(expectedOutput)
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
