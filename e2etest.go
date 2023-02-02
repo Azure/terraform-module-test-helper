@@ -21,6 +21,9 @@ type TerraformOutput = map[string]interface{}
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	t.Parallel()
+	defer func() {
+		tearDown(t, moduleRootPath, exampleRelativePath)
+	}()
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
 
@@ -39,6 +42,15 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	if assertion != nil {
 		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}
+}
+
+func tearDown(t *testing.T, rootDir string, modulePath string) {
+	s := SuccessTestVersionSnapshot(rootDir, modulePath)
+	if t.Failed() {
+		s = FailedTestVersionSnapshot(rootDir, modulePath, "")
+	}
+	err := s.Save(t)
+	require.NoError(t, err)
 }
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {

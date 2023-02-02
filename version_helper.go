@@ -26,8 +26,8 @@ type TestVersionSnapshot struct {
 	ErrorMsg                string
 }
 
-func SuccessTestVersionSnapshot(rootFolder, exampleRelativePath string) TestVersionSnapshot {
-	return TestVersionSnapshot{
+func SuccessTestVersionSnapshot(rootFolder, exampleRelativePath string) *TestVersionSnapshot {
+	return &TestVersionSnapshot{
 		ModuleRootFolder:        rootFolder,
 		SubModuleRelativeFolder: exampleRelativePath,
 		Time:                    time.Now(),
@@ -35,8 +35,8 @@ func SuccessTestVersionSnapshot(rootFolder, exampleRelativePath string) TestVers
 	}
 }
 
-func FailedTestVersionSnapshot(rootFolder, exampleRelativePath, errMsg string) TestVersionSnapshot {
-	return TestVersionSnapshot{
+func FailedTestVersionSnapshot(rootFolder, exampleRelativePath, errMsg string) *TestVersionSnapshot {
+	return &TestVersionSnapshot{
 		ModuleRootFolder:        rootFolder,
 		SubModuleRelativeFolder: exampleRelativePath,
 		Time:                    time.Now(),
