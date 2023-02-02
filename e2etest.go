@@ -55,7 +55,7 @@ func tearDown(t *testing.T, rootDir string, modulePath string) {
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {
 	tfInit(t, options)
-	return terraform.InitAndApply(t, options)
+	return terraform.Apply(t, options)
 }
 
 func tfInit(t terratest.TestingT, options *terraform.Options) {
