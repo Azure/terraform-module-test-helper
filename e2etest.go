@@ -2,7 +2,9 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +14,8 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"github.com/stretchr/testify/require"
 )
+
+var initLock = new(sync.Mutex)
 
 type TerraformOutput = map[string]interface{}
 
@@ -23,18 +27,24 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	option.TerraformDir = tmpDir
 
-	l := NewMemoryLogger(testDir)
+	l := NewMemoryLogger()
 	defer func() { _ = l.Close() }()
 	option.Logger = logger.New(l)
 	defer destroy(t, option)
 
-	terraform.InitAndApply(t, &option)
+	initAndApply(t, &option)
 	if err := initAndPlanAndIdempotentAtEasyMode(t, option); err != nil {
 		t.Fatalf(err.Error())
 	}
 	if assertion != nil {
 		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}
+}
+
+func initAndApply(t terratest.TestingT, options *terraform.Options) string {
+	initLock.Lock()
+	defer initLock.Unlock()
+	return terraform.InitAndApply(t, options)
 }
 
 func destroy(t *testing.T, option terraform.Options) {

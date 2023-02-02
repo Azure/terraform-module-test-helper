@@ -15,6 +15,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/hashicorp/go-getter/v2"
 	"github.com/hashicorp/terraform-json"
 	"github.com/lonegunmanb/tfmodredirector"
@@ -102,7 +103,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir string, newModulePath string) error {
 	opts.TerraformDir = originTerraformDir
 	defer destroy(t, opts)
-	terraform.InitAndApply(t, &opts)
+	initAndApply(t, &opts)
 	overrideModuleSourceToCurrentPath(t, originTerraformDir, newModulePath)
 	return initAndPlanAndIdempotentAtEasyMode(t, opts)
 }
@@ -110,7 +111,7 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 func initAndPlanAndIdempotentAtEasyMode(t *testing.T, opts terraform.Options) error {
 	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
 	opts.Logger = logger.Discard
-	exitCode := terraform.InitAndPlanWithExitCode(t, &opts)
+	exitCode := initAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
 	if exitCode == 0 || noChange(changes) {
@@ -247,4 +248,10 @@ func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 		currentMajor := fmt.Sprintf("v%d", majorVersion)
 		return major == currentMajor
 	}
+}
+
+func initAndPlanWithExitCode(t terratest.TestingT, options *terraform.Options) int {
+	initLock.Lock()
+	defer initLock.Unlock()
+	return terraform.InitAndPlanWithExitCode(t, options)
 }

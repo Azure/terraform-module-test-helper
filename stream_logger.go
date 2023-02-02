@@ -13,33 +13,37 @@ import (
 
 var _ logger.TestLogger = new(StreamLogger)
 
-var serializedLogger = NewStreamLogger("", os.Stdout)
+var serializedLogger = func() *StreamLogger {
+	l := NewStreamLogger(os.Stdout)
+	l.outputProgress = false
+	return l
+}()
 
 type StreamLogger struct {
-	name   string
-	stream io.ReadWriter
-	mu     *sync.Mutex
-	logCount int
+	stream         io.ReadWriter
+	mu             *sync.Mutex
+	logCount       int
+	outputProgress bool
 }
 
-func NewMemoryLogger(name string) *StreamLogger {
+func NewMemoryLogger() *StreamLogger {
 	buff := new(bytes.Buffer)
-	return NewStreamLogger(name, buff)
+	return NewStreamLogger(buff)
 }
 
-func NewStreamLogger(name string, stream io.ReadWriter) *StreamLogger {
+func NewStreamLogger(stream io.ReadWriter) *StreamLogger {
 	return &StreamLogger{
-		name:   name,
-		stream: stream,
-		mu:     new(sync.Mutex),
+		stream:         stream,
+		mu:             new(sync.Mutex),
+		outputProgress: true,
 	}
 }
 
 func (s *StreamLogger) Logf(t testing.TestingT, format string, args ...interface{}) {
 	logger.DoLog(t, 3, s.stream, fmt.Sprintf(format, args...))
 	s.logCount++
-	if s.name != "" && s.logCount % 50 == 0 {
-		logger.Log(t, fmt.Sprintf("test %s is still running, current log count: %d", s.name, s.logCount))
+	if s.outputProgress && s.logCount%50 == 0 {
+		logger.Log(t, fmt.Sprintf("still running, current log count: %d", s.logCount))
 	}
 }
 
