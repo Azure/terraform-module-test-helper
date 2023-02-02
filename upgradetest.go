@@ -251,7 +251,6 @@ func sameMajorVersion(majorVersion int) func(i interface{}) bool {
 }
 
 func initAndPlanWithExitCode(t terratest.TestingT, options *terraform.Options) int {
-	initLock.Lock()
-	defer initLock.Unlock()
-	return terraform.InitAndPlanWithExitCode(t, options)
+	tfInit(t, options)
+	return terraform.PlanExitCode(t, options)
 }

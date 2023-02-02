@@ -42,9 +42,14 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {
+	tfInit(t, options)
+	return terraform.InitAndApply(t, options)
+}
+
+func tfInit(t terratest.TestingT, options *terraform.Options) {
 	initLock.Lock()
 	defer initLock.Unlock()
-	return terraform.InitAndApply(t, options)
+	terraform.Init(t, options)
 }
 
 func destroy(t *testing.T, option terraform.Options) {
