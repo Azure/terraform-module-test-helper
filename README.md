@@ -1,7 +1,7 @@
 # Azure Verified Terraform Module Test Helper
 
-![test](https://img.shields.io/github/actions/workflow/status/Azure/terraform-module-test-helper/test.yaml?branch-main)
-![lint](https://img.shields.io/github/actions/workflow/status/Azure/terraform-module-test-helper/lint.yaml?branch=main)
+![test](https://img.shields.io/github/actions/workflow/status/Azure/terraform-module-test-helper/test.yaml?branch=main)
+![lint](https://img.shields.io/github/actions/workflow/status/Azure/terraform-module-test-helper/lint.yaml?branch=main&label=lint)
 
 This repo contains two helper functions that were used to test Azure Verified Terraform Module.
 
