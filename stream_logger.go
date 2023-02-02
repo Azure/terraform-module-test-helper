@@ -40,10 +40,11 @@ func NewStreamLogger(stream io.ReadWriter) *StreamLogger {
 }
 
 func (s *StreamLogger) Logf(t testing.TestingT, format string, args ...interface{}) {
-	logger.DoLog(t, 3, s.stream, fmt.Sprintf(format, args...))
+	log := fmt.Sprintf(format, args...)
+	logger.DoLog(t, 3, s.stream, log)
 	s.logCount++
 	if s.outputProgress && s.logCount%50 == 0 {
-		logger.Log(t, fmt.Sprintf("still running, current log count: %d", s.logCount))
+		logger.Log(t, fmt.Sprintf("logging sample: %s", log))
 	}
 }
 
