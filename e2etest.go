@@ -1,6 +1,7 @@
 package terraform_module_test_helper
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,11 +17,13 @@ type TerraformOutput = map[string]interface{}
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
 	t.Parallel()
+	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
+	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
 
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	option.TerraformDir = tmpDir
 
-	l := NewMemoryLogger()
+	l := NewMemoryLogger(testDir)
 	defer func() { _ = l.Close() }()
 	option.Logger = logger.New(l)
 	defer destroy(t, option)

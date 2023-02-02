@@ -13,20 +13,23 @@ import (
 
 var _ logger.TestLogger = new(StreamLogger)
 
-var serializedLogger = NewStreamLogger(os.Stdout)
+var serializedLogger = NewStreamLogger("", os.Stdout)
 
 type StreamLogger struct {
+	name   string
 	stream io.ReadWriter
 	mu     *sync.Mutex
+	logCount int
 }
 
-func NewMemoryLogger() *StreamLogger {
+func NewMemoryLogger(name string) *StreamLogger {
 	buff := new(bytes.Buffer)
-	return NewStreamLogger(buff)
+	return NewStreamLogger(name, buff)
 }
 
-func NewStreamLogger(stream io.ReadWriter) *StreamLogger {
+func NewStreamLogger(name string, stream io.ReadWriter) *StreamLogger {
 	return &StreamLogger{
+		name:   name,
 		stream: stream,
 		mu:     new(sync.Mutex),
 	}
@@ -34,6 +37,10 @@ func NewStreamLogger(stream io.ReadWriter) *StreamLogger {
 
 func (s *StreamLogger) Logf(t testing.TestingT, format string, args ...interface{}) {
 	logger.DoLog(t, 3, s.stream, fmt.Sprintf(format, args...))
+	s.logCount++
+	if s.name != "" && s.logCount % 50 == 0 {
+		logger.Log(t, fmt.Sprintf("test %s is still running, current log count: %d", s.name, s.logCount))
+	}
 }
 
 func (s *StreamLogger) PipeFrom(srcLogger *StreamLogger) error {

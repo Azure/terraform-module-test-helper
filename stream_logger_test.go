@@ -12,7 +12,7 @@ import (
 
 func TestStreamLoggerShouldLogSth(t *testing.T) {
 	buff := new(bytes.Buffer)
-	l := NewStreamLogger(buff)
+	l := NewStreamLogger("TestStreamLoggerShouldLogSth", buff)
 	log := "hello"
 	l.Logf(t, log)
 	assert.Contains(t, buff.String(), log)
@@ -21,9 +21,9 @@ func TestStreamLoggerShouldLogSth(t *testing.T) {
 func TestStreamLoggerCanPipeLogsToAnotherStreamLogger(t *testing.T) {
 	log := "hello"
 	srcBuff := bytes.NewBufferString(log)
-	srcLogger := NewStreamLogger(srcBuff)
+	srcLogger := NewStreamLogger("srcLogger", srcBuff)
 	destBuff := new(bytes.Buffer)
-	destLogger := NewStreamLogger(destBuff)
+	destLogger := NewStreamLogger("destLogger", destBuff)
 	err := destLogger.PipeFrom(srcLogger)
 	require.Nil(t, err)
 	assert.Contains(t, destBuff.String(), log)
@@ -32,10 +32,10 @@ func TestStreamLoggerCanPipeLogsToAnotherStreamLogger(t *testing.T) {
 func TestStreamLoggerClose(t *testing.T) {
 	log := "hello"
 	srcBuff := bytes.NewBufferString(log)
-	srcLogger := NewStreamLogger(srcBuff)
+	srcLogger := NewStreamLogger("srcLogger", srcBuff)
 
 	destBuff := new(bytes.Buffer)
-	dummyLogger := NewStreamLogger(destBuff)
+	dummyLogger := NewStreamLogger("", destBuff)
 	stub := gostub.Stub(&serializedLogger, dummyLogger)
 	defer stub.Reset()
 
@@ -79,14 +79,14 @@ var _ io.ReadWriter = new(testStream)
 
 func TestStreamLogParallelLogShouldBePipeToStdoutSerialized(t *testing.T) {
 	destBuff := new(bytes.Buffer)
-	dummyLogger := NewStreamLogger(destBuff)
+	dummyLogger := NewStreamLogger("", destBuff)
 	stub := gostub.Stub(&serializedLogger, dummyLogger)
 	defer stub.Reset()
 
 	large1 := newTestStream(byte(1), 1024*1024*50)
-	l1 := NewStreamLogger(large1)
+	l1 := NewStreamLogger("large1", large1)
 	large2 := newTestStream(byte(2), 1024*1024*50)
-	l2 := NewStreamLogger(large2)
+	l2 := NewStreamLogger("large2", large2)
 
 	go func() {
 		_ = l1.Close()
