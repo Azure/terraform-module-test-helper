@@ -85,26 +85,26 @@ func (s *TestVersionSnapshot) saveToLocal() (string, error) {
 }
 
 func copyFile(src, dst string) error {
-	src = filepath.Clean(src)
-	dst = filepath.Clean(dst)
-	if _, err := os.Stat(src); os.IsNotExist(err) {
+	cleanedSrc := filepath.Clean(src)
+	cleanedDst := filepath.Clean(dst)
+	if _, err := os.Stat(cleanedSrc); os.IsNotExist(err) {
 		return fmt.Errorf("source file does not exist: %s", src)
 	}
 
-	dstDir := filepath.Dir(dst)
+	dstDir := filepath.Dir(cleanedDst)
 	if _, err := os.Stat(dstDir); os.IsNotExist(err) && os.MkdirAll(dstDir, os.ModePerm) != nil {
 		return fmt.Errorf("failed to create destination folder: %s", dstDir)
 	}
-	if _, err := os.Stat(dst); !os.IsNotExist(err) && os.Remove(dst) != nil {
+	if _, err := os.Stat(cleanedDst); !os.IsNotExist(err) && os.Remove(cleanedDst) != nil {
 		return fmt.Errorf("failed to delete destination file: %s", dst)
 	}
-	srcFile, err := os.Open(src)
+	srcFile, err := os.Open(cleanedSrc)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %s", src)
 	}
 	defer func() { _ = srcFile.Close() }()
 
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.Create(cleanedDst)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %s", dst)
 	}
@@ -117,12 +117,13 @@ func copyFile(src, dst string) error {
 }
 
 func writeStringToFile(filePath, str string) error {
-	if files.FileExists(filePath) {
-		if err := os.Remove(filePath); err != nil {
+	cleanedFilePath := filepath.Clean(filePath)
+	if files.FileExists(cleanedFilePath) {
+		if err := os.Remove(cleanedFilePath); err != nil {
 			return err
 		}
 	}
-	f, err := os.Create(filePath)
+	f, err := os.Create(cleanedFilePath)
 	if err != nil {
 		return err
 	}
