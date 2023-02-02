@@ -49,8 +49,7 @@ func tearDown(t *testing.T, rootDir string, modulePath string) {
 	if t.Failed() {
 		s = FailedTestVersionSnapshot(rootDir, modulePath, "")
 	}
-	err := s.Save(t)
-	require.NoError(t, err)
+	require.NoError(t, s.Save(t))
 }
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {

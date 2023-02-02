@@ -42,6 +42,12 @@ func TestVersionSnapshotToString(t *testing.T) {
 }
 
 func TestOutputNewTestVersionSnapshot(t *testing.T) {
+	defer func() {
+		err := os.RemoveAll("TestRecord")
+		if err != nil {
+			println(err.Error())
+		}
+	}()
 	localPath := filepath.Join("example", "basic", "TestRecord.md.tmp")
 	defer func() { _ = os.Remove(localPath) }()
 	uploadPath := filepath.Join("TestRecord", "basic", "TestRecord.md.tmp")
