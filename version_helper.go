@@ -85,11 +85,12 @@ func (s *TestVersionSnapshot) saveToLocal() (string, error) {
 }
 
 func copyFile(src, dst string) error {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
 	if _, err := os.Stat(src); os.IsNotExist(err) {
 		return fmt.Errorf("source file does not exist: %s", src)
 	}
 
-	dst = filepath.Clean(dst)
 	dstDir := filepath.Dir(dst)
 	if _, err := os.Stat(dstDir); os.IsNotExist(err) && os.MkdirAll(dstDir, os.ModePerm) != nil {
 		return fmt.Errorf("failed to create destination folder: %s", dstDir)
