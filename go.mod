@@ -7,7 +7,7 @@ require (
 	github.com/google/go-github/v42 v42.0.0
 	github.com/gruntwork-io/terratest v0.41.9
 	github.com/hashicorp/go-getter/v2 v2.1.1
-	github.com/hashicorp/hcl/v2 v2.15.0
+	github.com/hashicorp/hcl/v2 v2.16.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20211115214459-90acf1ca460f
 	github.com/hashicorp/terraform-json v0.14.0
 	github.com/lonegunmanb/tfmodredirector v0.1.0
