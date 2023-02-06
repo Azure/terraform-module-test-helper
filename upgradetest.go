@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/google/go-github/v42/github"
@@ -37,6 +38,7 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	l := NewMemoryLogger()
 	defer func() { _ = l.Close() }()
 	opts.Logger = logger.New(l)
+	opts = setupRetryLogic(opts)
 
 	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
 	if err == CannotTestError || err == SkipV0Error {
@@ -45,6 +47,19 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+}
+
+func setupRetryLogic(opts terraform.Options) terraform.Options {
+	if len(opts.RetryableTerraformErrors) == 0 {
+		return opts
+	}
+	if opts.MaxRetries == 0 {
+		opts.MaxRetries = 10
+	}
+	if opts.TimeBetweenRetries == time.Duration(0) {
+		opts.TimeBetweenRetries = time.Minute
+	}
+	return opts
 }
 
 //goland:noinspection GoUnusedExportedFunction

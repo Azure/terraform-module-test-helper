@@ -33,6 +33,7 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	l := NewMemoryLogger()
 	defer func() { _ = l.Close() }()
 	option.Logger = logger.New(l)
+	option = setupRetryLogic(option)
 	defer destroy(t, option)
 
 	initAndApply(t, &option)
