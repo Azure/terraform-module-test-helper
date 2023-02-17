@@ -78,12 +78,18 @@ Success: %t
 }
 
 func (s *TestVersionSnapshot) Save(t *testing.T) error {
-	s.load(t)
-	localPath, err := s.saveToLocal()
+	path, err := filepath.Abs(filepath.Clean(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder, "TestRecord.md.tmp")))
 	if err != nil {
 		return err
 	}
-	return s.copyForUploadArtifact(localPath)
+	unlock := recordFileLocks.Lock(path)
+	defer unlock()
+	s.load(t)
+	err = s.saveToLocal(path)
+	if err != nil {
+		return err
+	}
+	return s.copyForUploadArtifact(path)
 }
 
 func (s *TestVersionSnapshot) copyForUploadArtifact(localPath string) error {
@@ -92,10 +98,8 @@ func (s *TestVersionSnapshot) copyForUploadArtifact(localPath string) error {
 	return copyFile(localPath, pathForUpload)
 }
 
-func (s *TestVersionSnapshot) saveToLocal() (string, error) {
-	path := filepath.Clean(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder, "TestRecord.md.tmp"))
-	err := writeStringToFile(path, s.ToString())
-	return path, err
+func (s *TestVersionSnapshot) saveToLocal(path string) error {
+	return writeStringToFile(path, s.ToString())
 }
 
 func copyFile(src, dst string) error {
@@ -132,8 +136,6 @@ func copyFile(src, dst string) error {
 
 func writeStringToFile(filePath, str string) error {
 	cleanedFilePath := filepath.Clean(filePath)
-	unlock := recordFileLocks.Lock(cleanedFilePath)
-	defer unlock()
 	if files.FileExists(cleanedFilePath) {
 		if err := os.Remove(cleanedFilePath); err != nil {
 			return err
