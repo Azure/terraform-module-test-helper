@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,8 +15,21 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
+
 var initE = terraform.InitE
 var runTerraformCommandE = terraform.RunTerraformCommandE
+var recordFileLocks = &KeyedMutex{}
+
+type KeyedMutex struct {
+	mutexes sync.Map // Zero value is empty and ready for use
+}
+
+func (m *KeyedMutex) Lock(key string) func() {
+	value, _ := m.mutexes.LoadOrStore(key, &sync.Mutex{})
+	mtx := value.(*sync.Mutex)
+	mtx.Lock()
+	return func() { mtx.Unlock() }
+}
 
 type TestVersionSnapshot struct {
 	ModuleRootFolder        string
@@ -118,6 +132,8 @@ func copyFile(src, dst string) error {
 
 func writeStringToFile(filePath, str string) error {
 	cleanedFilePath := filepath.Clean(filePath)
+	unlock := recordFileLocks.Lock(cleanedFilePath)
+	defer unlock()
 	if files.FileExists(cleanedFilePath) {
 		if err := os.Remove(cleanedFilePath); err != nil {
 			return err

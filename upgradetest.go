@@ -3,6 +3,8 @@ package terraform_module_test_helper
 import (
 	"context"
 	"fmt"
+	"golang.org/x/oauth2"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -213,7 +215,7 @@ var cloneGithubRepo = func(owner string, repo string, tag *string) (string, erro
 }
 
 var getLatestTag = func(owner string, repo string, currentMajorVer int) (string, error) {
-	client := github.NewClient(nil)
+	client := github.NewClient(githubClient())
 	tags, _, err := client.Repositories.ListTags(context.TODO(), owner, repo, nil)
 	if err != nil {
 		return "", err
@@ -227,6 +229,19 @@ var getLatestTag = func(owner string, repo string, currentMajorVer int) (string,
 	}
 	latestTag := first.GetName()
 	return latestTag, nil
+}
+
+func githubClient() *http.Client {
+	var httpClient *http.Client
+	ghToken := os.Getenv("GITHUB_TOKEN")
+	if ghToken != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: ghToken},
+		)
+		httpClient = oauth2.NewClient(ctx, ts)
+	}
+	return httpClient
 }
 
 func latestTagWithinMajorVersion(tags []*github.RepositoryTag, currentMajorVer int) *github.RepositoryTag {
