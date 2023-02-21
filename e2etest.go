@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"fmt"
 	terratest "github.com/gruntwork-io/terratest/modules/testing"
+	"io"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -19,19 +20,48 @@ var initLock = new(sync.Mutex)
 
 type TerraformOutput = map[string]interface{}
 
+type testExecutor interface {
+	TearDown(t *testing.T, rootDir string, modulePath string)
+	Logger() logger.TestLogger
+}
+
+var _ testExecutor = e2eTestExecutor{}
+
+type e2eTestExecutor struct{}
+
+func (e2eTestExecutor) TearDown(t *testing.T, rootDir string, modulePath string) {
+	s := SuccessTestVersionSnapshot(rootDir, modulePath)
+	if t.Failed() {
+		s = FailedTestVersionSnapshot(rootDir, modulePath, "")
+	}
+	require.NoError(t, s.Save(t))
+}
+
+func (e2eTestExecutor) Logger() logger.TestLogger {
+	l := NewMemoryLogger()
+	return l
+}
+
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, assertion, e2eTestExecutor{})
+}
+
+func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
 	t.Parallel()
-	defer func() {
-		tearDown(t, moduleRootPath, exampleRelativePath)
-	}()
+	defer executor.TearDown(t, moduleRootPath, exampleRelativePath)
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
 
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	option.TerraformDir = tmpDir
 
-	l := NewMemoryLogger()
-	defer func() { _ = l.Close() }()
+	l := executor.Logger()
+	c, ok := l.(io.Closer)
+	if ok {
+		defer func() {
+			_ = c.Close()
+		}()
+	}
 	option.Logger = logger.New(l)
 	option = setupRetryLogic(option)
 	defer destroy(t, option)
@@ -46,11 +76,7 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func tearDown(t *testing.T, rootDir string, modulePath string) {
-	s := SuccessTestVersionSnapshot(rootDir, modulePath)
-	if t.Failed() {
-		s = FailedTestVersionSnapshot(rootDir, modulePath, "")
-	}
-	require.NoError(t, s.Save(t))
+
 }
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {
