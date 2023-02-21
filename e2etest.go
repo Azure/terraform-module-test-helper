@@ -2,7 +2,6 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
-	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"io"
 	"path/filepath"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,10 +73,6 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	if assertion != nil {
 		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}
-}
-
-func tearDown(t *testing.T, rootDir string, modulePath string) {
-
 }
 
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {
