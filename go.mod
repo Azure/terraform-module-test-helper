@@ -13,7 +13,7 @@ require (
 	github.com/lonegunmanb/tfmodredirector v0.1.0
 	github.com/prashantv/gostub v1.1.0
 	github.com/r3labs/diff/v3 v3.0.1
-	github.com/spf13/afero v1.9.3
+	github.com/spf13/afero v1.9.4
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/mod v0.8.0
 	golang.org/x/oauth2 v0.1.0
