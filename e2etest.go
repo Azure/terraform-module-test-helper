@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var initLock = new(sync.Mutex)
+var copyLock = &KeyedMutex{}
 
 type TerraformOutput = map[string]interface{}
 
@@ -52,7 +51,7 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
 
-	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
+	tmpDir := copyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	option.TerraformDir = tmpDir
 
 	l := executor.Logger()
@@ -75,14 +74,19 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	}
 }
 
+func copyTerraformFolderToTemp(t *testing.T, moduleRootPath string, exampleRelativePath string) string {
+	unlock := copyLock.Lock(exampleRelativePath)
+	defer unlock()
+	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
+	return tmpDir
+}
+
 func initAndApply(t terratest.TestingT, options *terraform.Options) string {
 	tfInit(t, options)
 	return terraform.Apply(t, options)
 }
 
 func tfInit(t terratest.TestingT, options *terraform.Options) {
-	initLock.Lock()
-	defer initLock.Unlock()
 	terraform.Init(t, options)
 }
 
