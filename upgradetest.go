@@ -35,7 +35,7 @@ type repositoryTag struct {
 
 //goland:noinspection GoUnusedExportedFunction
 func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
-	t.Parallel()
+	tryParallel(t)
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", owner, repo, moduleFolderRelativeToRoot))
 	l := NewMemoryLogger()
 	defer func() { _ = l.Close() }()
@@ -49,6 +49,15 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+}
+
+func tryParallel(t *testing.T) {
+	defer func() {
+		if recover() != nil {
+			t.Log("cannot run test in parallel, skip parallel")
+		}
+	}()
+	t.Parallel()
 }
 
 func setupRetryLogic(opts terraform.Options) terraform.Options {

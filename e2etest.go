@@ -46,7 +46,7 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 }
 
 func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
-	t.Parallel()
+	tryParallel(t)
 	defer executor.TearDown(t, moduleRootPath, exampleRelativePath)
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
