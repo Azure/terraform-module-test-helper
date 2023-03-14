@@ -129,6 +129,9 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 		return CannotTestError
 	}
 	tmpTestDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
+	defer func() {
+		_ = os.RemoveAll(filepath.Clean(tmpTestDir))
+	}()
 	return diffTwoVersions(t, opts, tmpTestDir, newModulePath)
 }
 

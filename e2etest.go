@@ -3,6 +3,7 @@ package terraform_module_test_helper
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -54,6 +55,9 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	logger.Log(t, fmt.Sprintf("===> Starting test for %s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", testDir))
 
 	tmpDir := copyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
+	defer func() {
+		_ = os.RemoveAll(filepath.Clean(tmpDir))
+	}()
 	option.TerraformDir = tmpDir
 
 	l := executor.Logger()
