@@ -13,7 +13,7 @@ require (
 	github.com/lonegunmanb/tfmodredirector v0.1.0
 	github.com/prashantv/gostub v1.1.0
 	github.com/r3labs/diff/v3 v3.0.1
-	github.com/spf13/afero v1.9.4
+	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.2
 	golang.org/x/mod v0.9.0
 	golang.org/x/oauth2 v0.6.0
@@ -79,7 +79,7 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/zclconf/go-cty v1.12.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167 // indirect
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
