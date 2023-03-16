@@ -96,6 +96,7 @@ func initAndApply(t terratest.TestingT, options *terraform.Options) string {
 }
 
 func tfInit(t terratest.TestingT, options *terraform.Options) {
+	options.Upgrade = false
 	initLock.Lock()
 	logger.Default.Logf(t, fmt.Sprintf("init lock acuired by %s", options.TerraformDir))
 	defer func() {
