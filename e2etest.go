@@ -56,7 +56,7 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 
 	tmpDir := copyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	defer func() {
-		skip := os.Getenv("SKIP_CLEAN_TMP")
+		skip := os.Getenv("DONOT_CLEAN_TMP")
 		if skip == "" {
 			_ = os.RemoveAll(filepath.Clean(tmpDir))
 		}
