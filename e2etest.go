@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 )
 
 var copyLock = &KeyedMutex{}
-var initLock = &sync.Mutex{}
 
 type TerraformOutput = map[string]interface{}
 
@@ -56,10 +54,7 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 
 	tmpDir := copyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
 	defer func() {
-		skip := os.Getenv("DONOT_CLEAN_TMP")
-		if skip == "" {
-			_ = os.RemoveAll(filepath.Clean(tmpDir))
-		}
+		_ = os.RemoveAll(filepath.Clean(tmpDir))
 	}()
 	option.TerraformDir = tmpDir
 
@@ -96,13 +91,6 @@ func initAndApply(t terratest.TestingT, options *terraform.Options) string {
 }
 
 func tfInit(t terratest.TestingT, options *terraform.Options) {
-	options.Upgrade = false
-	initLock.Lock()
-	logger.Default.Logf(t, fmt.Sprintf("init lock acuired by %s", options.TerraformDir))
-	defer func() {
-		initLock.Unlock()
-		logger.Default.Logf(t, fmt.Sprintf("init lock released by %s", options.TerraformDir))
-	}()
 	terraform.Init(t, options)
 }
 

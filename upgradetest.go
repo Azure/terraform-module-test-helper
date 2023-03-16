@@ -130,10 +130,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 	}
 	tmpTestDir := test_structure.CopyTerraformFolderToTemp(t, tmpDirForTag, moduleFolderRelativeToRoot)
 	defer func() {
-		skip := os.Getenv("DONOT_CLEAN_TMP")
-		if skip == "" {
-			_ = os.RemoveAll(filepath.Clean(tmpTestDir))
-		}
+		_ = os.RemoveAll(filepath.Clean(tmpTestDir))
 	}()
 	return diffTwoVersions(t, opts, tmpTestDir, newModulePath)
 }
