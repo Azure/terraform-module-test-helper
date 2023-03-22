@@ -15,7 +15,6 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-
 var initE = terraform.InitE
 var runTerraformCommandE = terraform.RunTerraformCommandE
 var recordFileLocks = &KeyedMutex{}

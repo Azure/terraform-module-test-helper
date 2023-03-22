@@ -143,7 +143,7 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	return initAndPlanAndIdempotentAtEasyMode(t, opts)
 }
 
-func initAndPlanAndIdempotentAtEasyMode(t *testing.T, opts terraform.Options) error {
+var initAndPlanAndIdempotentAtEasyMode = func(t *testing.T, opts terraform.Options) error {
 	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
 	opts.Logger = logger.Discard
 	exitCode := initAndPlanWithExitCode(t, &opts)

@@ -2,12 +2,13 @@ package terraform_module_test_helper
 
 import (
 	"bytes"
-	"github.com/prashantv/gostub"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"math"
 	"testing"
+
+	"github.com/prashantv/gostub"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStreamLoggerShouldLogSth(t *testing.T) {
@@ -46,8 +47,8 @@ func TestStreamLoggerClose(t *testing.T) {
 
 type testStream struct {
 	content byte
-	length int
-	finish chan int
+	length  int
+	finish  chan int
 }
 
 func newTestStream(content byte, length int) *testStream {

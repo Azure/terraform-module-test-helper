@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"github.com/prashantv/gostub"
 	"github.com/stretchr/testify/assert"
+	"github.com/timandy/routine"
 )
 
 func TestE2EExampleTest(t *testing.T) {
@@ -18,6 +20,33 @@ func TestE2EExampleTest(t *testing.T) {
 		assert.True(t, ok)
 		assert.NotEqual(t, "", resId, "expected output `resource_id`")
 	})
+}
+
+func TestE2EExample_WithoutIdempotent(t *testing.T) {
+	currentId := routine.Goid()
+	originStub := initAndPlanAndIdempotentAtEasyMode
+	stub := gostub.Stub(&initAndPlanAndIdempotentAtEasyMode, func(t *testing.T, opts terraform.Options) error {
+		// Do not impact other tests.
+		id := routine.Goid()
+		if id != currentId {
+			return originStub(t, opts)
+		}
+		assert.FailNow(t, "should not be called")
+		return nil
+	})
+	defer stub.Reset()
+	RunE2ETestWithOption(t, "./", "example/basic",
+		TestOptions{
+			TerraformOptions: terraform.Options{
+				Upgrade: true,
+			},
+			Assertion: func(t *testing.T, output TerraformOutput) {
+				resId, ok := output["resource_id"].(string)
+				assert.True(t, ok)
+				assert.NotEqual(t, "", resId, "expected output `resource_id`")
+			},
+			SkipIdempotentCheck: true,
+		})
 }
 
 func TestE2EExampleTest_setEnvWontCausePanicOnParallel(t *testing.T) {

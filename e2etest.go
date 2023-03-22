@@ -16,6 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type TestOptions struct {
+	TerraformOptions    terraform.Options
+	Assertion           func(*testing.T, TerraformOutput)
+	SkipIdempotentCheck bool
+}
+
 var copyLock = &KeyedMutex{}
 
 type TerraformOutput = map[string]interface{}
@@ -43,10 +49,20 @@ func (e2eTestExecutor) Logger() logger.TestLogger {
 }
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, assertion, e2eTestExecutor{})
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, assertion, true, e2eTestExecutor{})
 }
 
-func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
+func RunE2ETestWithOption(t *testing.T, moduleRootPath, exampleRelativePath string, testOption TestOptions) {
+	initAndApplyAndIdempotentTest(t,
+		moduleRootPath,
+		exampleRelativePath,
+		testOption.TerraformOptions,
+		testOption.Assertion,
+		testOption.SkipIdempotentCheck,
+		e2eTestExecutor{})
+}
+
+func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput), skipCheckIdempotent bool, executor testExecutor) {
 	tryParallel(t)
 	defer executor.TearDown(t, moduleRootPath, exampleRelativePath)
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
@@ -70,7 +86,11 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	defer destroy(t, option)
 
 	initAndApply(t, &option)
-	if err := initAndPlanAndIdempotentAtEasyMode(t, option); err != nil {
+	var err error
+	if !skipCheckIdempotent {
+		err = initAndPlanAndIdempotentAtEasyMode(t, option)
+	}
+	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	if assertion != nil {
