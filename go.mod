@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/google/go-github/v42 v42.0.0
-	github.com/gruntwork-io/terratest v0.41.25
+	github.com/gruntwork-io/terratest v0.42.0
 	github.com/hashicorp/go-getter/v2 v2.2.1
 	github.com/hashicorp/hcl/v2 v2.16.2
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20211115214459-90acf1ca460f
