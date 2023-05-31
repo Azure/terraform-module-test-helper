@@ -15,6 +15,7 @@ require (
 	github.com/r3labs/diff/v3 v3.0.1
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.3
+	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.1
 	golang.org/x/mod v0.10.0
 	golang.org/x/oauth2 v0.8.0
