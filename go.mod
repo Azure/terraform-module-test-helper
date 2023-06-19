@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/google/go-github/v42 v42.0.0
-	github.com/gruntwork-io/go-commons v0.16.2
+	github.com/gruntwork-io/go-commons v0.17.0
 	github.com/gruntwork-io/terratest v0.43.0
 	github.com/hashicorp/go-getter/v2 v2.2.1
 	github.com/hashicorp/hcl/v2 v2.17.0
