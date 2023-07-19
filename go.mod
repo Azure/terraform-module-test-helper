@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.1
-	golang.org/x/mod v0.11.0
+	golang.org/x/mod v0.12.0
 	golang.org/x/oauth2 v0.10.0
 )
 
