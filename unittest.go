@@ -18,5 +18,5 @@ func (u unitTestExecutor) Logger() logger.TestLogger {
 }
 
 func RunUnitTest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, assertion, false, unitTestExecutor{})
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, true, true, assertion, unitTestExecutor{})
 }

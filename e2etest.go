@@ -20,6 +20,7 @@ type TestOptions struct {
 	TerraformOptions    terraform.Options
 	Assertion           func(*testing.T, TerraformOutput)
 	SkipIdempotentCheck bool
+	SkipDestroy         bool
 }
 
 var copyLock = &KeyedMutex{}
@@ -49,20 +50,14 @@ func (e2eTestExecutor) Logger() logger.TestLogger {
 }
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, assertion, true, e2eTestExecutor{})
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, true, assertion, e2eTestExecutor{})
 }
 
 func RunE2ETestWithOption(t *testing.T, moduleRootPath, exampleRelativePath string, testOption TestOptions) {
-	initAndApplyAndIdempotentTest(t,
-		moduleRootPath,
-		exampleRelativePath,
-		testOption.TerraformOptions,
-		testOption.Assertion,
-		testOption.SkipIdempotentCheck,
-		e2eTestExecutor{})
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, testOption.TerraformOptions, false, testOption.SkipIdempotentCheck, testOption.Assertion, e2eTestExecutor{})
 }
 
-func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput), skipCheckIdempotent bool, executor testExecutor) {
+func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleRelativePath string, option terraform.Options, skipDestroy bool, skipCheckIdempotent bool, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
 	tryParallel(t)
 	defer executor.TearDown(t, moduleRootPath, exampleRelativePath)
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
@@ -83,8 +78,10 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	}
 	option.Logger = logger.New(l)
 	option = setupRetryLogic(option)
-	defer destroy(t, option)
 
+	if !skipDestroy {
+		defer destroy(t, option)
+	}
 	initAndApply(t, &option)
 	var err error
 	if !skipCheckIdempotent {
