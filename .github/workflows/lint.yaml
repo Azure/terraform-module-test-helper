@@ -27,9 +27,9 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@00e563ead9f72a8461b24876bee2d0c2e8bd2ee8 # 2.21.5
       - name: Autobuild
-        uses: github/codeql-action/autobuild@@00e563ead9f72a8461b24876bee2d0c2e8bd2ee8 # 2.21.5
+        uses: github/codeql-action/autobuild@00e563ead9f72a8461b24876bee2d0c2e8bd2ee8 # 2.21.5
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@_@00e563ead9f72a8461b24876bee2d0c2e8bd2ee8 # 2.21.5
+        uses: github/codeql-action/analyze@00e563ead9f72a8461b24876bee2d0c2e8bd2ee8 # 2.21.5
       - name: golangci-lint
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
         with:
