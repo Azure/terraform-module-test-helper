@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/google/go-github/v42 v42.0.0
 	github.com/gruntwork-io/go-commons v0.17.1
-	github.com/gruntwork-io/terratest v0.46.1
+	github.com/gruntwork-io/terratest v0.46.5
 	github.com/hashicorp/go-getter/v2 v2.2.1
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20211115214459-90acf1ca460f
@@ -105,7 +105,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
-	google.golang.org/grpc v1.55.0 // indirect
+	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
