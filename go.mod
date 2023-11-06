@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.2
-	golang.org/x/mod v0.13.0
+	golang.org/x/mod v0.14.0
 	golang.org/x/oauth2 v0.13.0
 )
 
