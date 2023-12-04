@@ -19,7 +19,7 @@ require (
 	github.com/spf13/afero v1.11.0
 	github.com/stretchr/testify v1.8.4
 	github.com/thanhpk/randstr v1.0.6
-	github.com/timandy/routine v1.1.2
+	github.com/timandy/routine v1.1.3
 	golang.org/x/mod v0.14.0
 	golang.org/x/oauth2 v0.15.0
 )
