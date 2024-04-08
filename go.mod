@@ -21,7 +21,7 @@ require (
 	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.3
 	golang.org/x/mod v0.16.0
-	golang.org/x/oauth2 v0.18.0
+	golang.org/x/oauth2 v0.19.0
 )
 
 require (
