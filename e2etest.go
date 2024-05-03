@@ -53,6 +53,10 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, true, assertion, e2eTestExecutor{})
 }
 
+func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, false, assertion, e2eTestExecutor{})
+}
+
 func RunE2ETestWithOption(t *testing.T, moduleRootPath, exampleRelativePath string, testOption TestOptions) {
 	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, testOption.TerraformOptions, false, testOption.SkipIdempotentCheck, testOption.Assertion, e2eTestExecutor{})
 }
