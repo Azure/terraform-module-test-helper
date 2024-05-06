@@ -21,13 +21,12 @@ require (
 	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.3
 	golang.org/x/mod v0.17.0
-	golang.org/x/oauth2 v0.19.0
+	golang.org/x/oauth2 v0.20.0
 )
 
 require (
 	cloud.google.com/go v0.110.10 // indirect
-	cloud.google.com/go/compute v1.23.3 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.5 // indirect
 	cloud.google.com/go/storage v1.35.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
