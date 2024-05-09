@@ -50,7 +50,7 @@ func (e2eTestExecutor) Logger() logger.TestLogger {
 }
 
 func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, true, assertion, e2eTestExecutor{})
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, false, assertion, e2eTestExecutor{})
 }
 
 func RunE2ETestWithOption(t *testing.T, moduleRootPath, exampleRelativePath string, testOption TestOptions) {
