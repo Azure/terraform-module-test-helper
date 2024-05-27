@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ type TestOptions struct {
 }
 
 var copyLock = &KeyedMutex{}
+var initLock = &sync.Mutex{}
 
 type TerraformOutput = map[string]interface{}
 
@@ -108,6 +110,8 @@ func initAndApply(t terratest.TestingT, options *terraform.Options) string {
 }
 
 func tfInit(t terratest.TestingT, options *terraform.Options) {
+	initLock.Lock()
+	defer initLock.Unlock()
 	terraform.Init(t, options)
 }
 
