@@ -159,7 +159,11 @@ func (s *TestVersionSnapshot) load(t *testing.T) {
 		NoColor:      true,
 		Logger:       logger.Discard,
 	}
-	if output, err := initE(t, &opts); err != nil {
+	if output, err := func() (string, error) {
+		initLock.Lock()
+		defer initLock.Unlock()
+		return initE(t, &opts)
+	}(); err != nil {
 		s.Success = false
 		s.ErrorMsg = output
 		return
