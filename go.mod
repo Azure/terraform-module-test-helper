@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/google/go-github/v42 v42.0.0
 	github.com/gruntwork-io/go-commons v0.17.1
-	github.com/gruntwork-io/terratest v0.46.15
+	github.com/gruntwork-io/terratest v0.46.16
 	github.com/hashicorp/go-getter/v2 v2.2.2
 	github.com/hashicorp/hcl/v2 v2.21.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20211115214459-90acf1ca460f
@@ -56,7 +56,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-getter v1.7.4 // indirect
+	github.com/hashicorp/go-getter v1.7.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
