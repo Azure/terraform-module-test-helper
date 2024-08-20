@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -10,10 +11,7 @@ func ReadRetryableErrors(retryableCfg []byte, t *testing.T) map[string]string {
 		RetryableErrors []string `json:"retryable_errors"`
 	}{}
 
-	err := json.Unmarshal(retryableCfg, &cfg)
-	if err != nil {
-		t.Fatalf("cannot unmarshal retryable config, must be and valid terragrunt `retryable_errors` config in json format.")
-	}
+	require.NoError(t, json.Unmarshal(retryableCfg, &cfg))
 	retryableRegexes := cfg.RetryableErrors
 	retryableErrors := make(map[string]string)
 	for _, r := range retryableRegexes {

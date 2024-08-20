@@ -89,9 +89,7 @@ func initAndApplyAndIdempotentTest(t *testing.T, moduleRootPath string, exampleR
 	if !skipCheckIdempotent {
 		err = initAndPlanAndIdempotentAtEasyMode(t, option)
 	}
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 	if assertion != nil {
 		assertion(t, terraform.OutputAll(t, removeLogger(option)))
 	}

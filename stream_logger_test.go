@@ -108,9 +108,7 @@ func TestStreamLogParallelLogShouldBePipeToStdoutSerialized(t *testing.T) {
 	gap := false
 	for i := 1; i < len(buff); i++ {
 		if buff[i] != buff[i-1] {
-			if gap {
-				t.Fatalf("not serialized output")
-			}
+			assert.Falsef(t, gap, "not serialized output")
 			gap = true
 		}
 	}
