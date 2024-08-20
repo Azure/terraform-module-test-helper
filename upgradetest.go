@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/go-getter/v2"
 	"github.com/hashicorp/terraform-json"
 	"github.com/lonegunmanb/tfmodredirector"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
 )
 
@@ -44,11 +45,9 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 
 	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
 	if err == CannotTestError || err == SkipV0Error {
-		t.Skipf(err.Error())
+		t.Skip(err.Error())
 	}
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 }
 
 func tryParallel(t *testing.T) {
@@ -174,10 +173,7 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 }
 
 func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
-	err := rewriteHcl(moduleDir, currentModulePath)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	require.NoError(t, rewriteHcl(moduleDir, currentModulePath))
 }
 
 func rewriteHcl(moduleDir, newModuleSource string) error {

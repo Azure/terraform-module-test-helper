@@ -31,7 +31,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@74483a38d39275f33fcff5f35b679b5ca4a26a99 #v2.22.5
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
+        uses: golangci/golangci-lint-action@aaa42aa0628b4ae2578232a66b541047968fac86 # v3.7.0
         with:
-          version: latest
+          version: v1.59.1
           args: --timeout 1h
