@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@55d79496019a560e16e73e1948dee20a1fad631a # v2.18.2
+        uses: securego/gosec@abfe8cfd6d5687c96abf31f8e7f57982df2a6e4f # v2.21.2
         with:
             args: -tests ./...
       - name: Initialize CodeQL
