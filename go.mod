@@ -1,8 +1,7 @@
 module github.com/Azure/terraform-module-test-helper
 
 go 1.21
-
-toolchain go1.21.3
+toolchain go1.22.5
 
 require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
@@ -20,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/thanhpk/randstr v1.0.6
 	github.com/timandy/routine v1.1.4
-	golang.org/x/mod v0.20.0
+	golang.org/x/mod v0.21.0
 	golang.org/x/oauth2 v0.23.0
 )
 
