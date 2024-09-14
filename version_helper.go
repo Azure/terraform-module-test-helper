@@ -109,7 +109,7 @@ func copyFile(src, dst string) error {
 	}
 
 	dstDir := filepath.Dir(cleanedDst)
-	if _, err := os.Stat(dstDir); os.IsNotExist(err) && os.MkdirAll(dstDir, os.ModePerm) != nil {
+	if _, err := os.Stat(dstDir); os.IsNotExist(err) && os.MkdirAll(dstDir, 0750) != nil {
 		return fmt.Errorf("failed to create destination folder: %s", dstDir)
 	}
 	if _, err := os.Stat(cleanedDst); !os.IsNotExist(err) && os.Remove(cleanedDst) != nil {

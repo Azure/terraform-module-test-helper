@@ -199,7 +199,7 @@ func rewriteHcl(moduleDir, newModuleSource string) error {
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(filePath, []byte(tfCode), os.ModePerm)
+		err = os.WriteFile(filePath, []byte(tfCode), 0600)
 		if err != nil {
 			return err
 		}
