@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-getter/v2 v2.2.3
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20211115214459-90acf1ca460f
-	github.com/hashicorp/terraform-json v0.23.0
+	github.com/hashicorp/terraform-json v0.24.0
 	github.com/lonegunmanb/tfmodredirector v0.1.0
 	github.com/prashantv/gostub v1.1.0
 	github.com/r3labs/diff/v3 v3.0.1
@@ -119,7 +119,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	github.com/zclconf/go-cty v1.15.0 // indirect
+	github.com/zclconf/go-cty v1.15.1 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136 // indirect
 	golang.org/x/net v0.31.0 // indirect
