@@ -24,9 +24,7 @@ func TestE2EExampleTest(t *testing.T) {
 }
 
 func TestE2EExample_testFail(t *testing.T) {
-	t.Skip("do not run this test unless you'd like to verify `Error` section in `example/should_fail` folder")
-	sut := newT(t)
-	expectFailure(sut, func(t *T) {
+	sut := expectFailure(t, func(t testingT) {
 		runE2ETest(t, "./", "example/should_fail", terraform.Options{
 			Upgrade: true,
 			NoColor: true,
@@ -34,13 +32,12 @@ func TestE2EExample_testFail(t *testing.T) {
 	})
 	msg := sut.ErrorMessage()
 	require.Contains(t, msg, "Resource postcondition failed")
-	t.SkipNow()
 }
 
 func TestE2EExample_WithoutIdempotent(t *testing.T) {
 	currentId := routine.Goid()
 	originStub := initAndPlanAndIdempotentAtEasyMode
-	stub := gostub.Stub(&initAndPlanAndIdempotentAtEasyMode, func(t *T, opts terraform.Options) error {
+	stub := gostub.Stub(&initAndPlanAndIdempotentAtEasyMode, func(t testingT, opts terraform.Options) error {
 		// Do not impact other tests.
 		id := routine.Goid()
 		if id != currentId {

@@ -51,7 +51,7 @@ func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, cu
 	require.NoError(wrappedT, err)
 }
 
-func tryParallel(t *T) {
+func tryParallel(t testingT) {
 	defer func() {
 		if recover() != nil {
 			t.T().Log("cannot run test in parallel, skip parallel")
@@ -143,7 +143,7 @@ func diffTwoVersions(t *T, opts terraform.Options, originTerraformDir string, ne
 	return initAndPlanAndIdempotentAtEasyMode(t, opts)
 }
 
-var initAndPlanAndIdempotentAtEasyMode = func(t *T, opts terraform.Options) error {
+var initAndPlanAndIdempotentAtEasyMode = func(t testingT, opts terraform.Options) error {
 	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
 	opts.Logger = logger.Discard
 	exitCode := initAndPlanWithExitCode(t, &opts)
