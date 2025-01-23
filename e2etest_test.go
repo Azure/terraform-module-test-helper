@@ -1,6 +1,7 @@
 package terraform_module_test_helper
 
 import (
+	"github.com/stretchr/testify/require"
 	"os"
 	"runtime"
 	"strconv"
@@ -22,10 +23,24 @@ func TestE2EExampleTest(t *testing.T) {
 	})
 }
 
+func TestE2EExample_testFail(t *testing.T) {
+	t.Skip("do not run this test unless you'd like to verify `Error` section in `example/should_fail` folder")
+	sut := newT(t)
+	expectFailure(sut, func(t *T) {
+		runE2ETest(t, "./", "example/should_fail", terraform.Options{
+			Upgrade: true,
+			NoColor: true,
+		}, nil)
+	})
+	msg := sut.ErrorMessage()
+	require.Contains(t, msg, "Resource postcondition failed")
+	t.SkipNow()
+}
+
 func TestE2EExample_WithoutIdempotent(t *testing.T) {
 	currentId := routine.Goid()
 	originStub := initAndPlanAndIdempotentAtEasyMode
-	stub := gostub.Stub(&initAndPlanAndIdempotentAtEasyMode, func(t *testing.T, opts terraform.Options) error {
+	stub := gostub.Stub(&initAndPlanAndIdempotentAtEasyMode, func(t *T, opts terraform.Options) error {
 		// Do not impact other tests.
 		id := routine.Goid()
 		if id != currentId {
@@ -61,4 +76,8 @@ func TestE2EExampleTest_setEnvWontCausePanicOnParallel(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestE2EExampleTest_failedTestShouldGenerateErrorMessage(t *testing.T) {
+
 }

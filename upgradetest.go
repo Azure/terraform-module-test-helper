@@ -36,27 +36,28 @@ type repositoryTag struct {
 
 //goland:noinspection GoUnusedExportedFunction
 func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
-	tryParallel(t)
-	logger.Log(t, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", owner, repo, moduleFolderRelativeToRoot))
+	wrappedT := newT(t)
+	tryParallel(wrappedT)
+	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", owner, repo, moduleFolderRelativeToRoot))
 	l := NewMemoryLogger()
 	defer func() { _ = l.Close() }()
 	opts.Logger = logger.New(l)
 	opts = setupRetryLogic(opts)
 
-	err := moduleUpgrade(t, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
+	err := moduleUpgrade(wrappedT, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
 	if err == CannotTestError || err == SkipV0Error {
 		t.Skip(err.Error())
 	}
-	require.NoError(t, err)
+	require.NoError(wrappedT, err)
 }
 
-func tryParallel(t *testing.T) {
+func tryParallel(t *T) {
 	defer func() {
 		if recover() != nil {
-			t.Log("cannot run test in parallel, skip parallel")
+			t.T().Log("cannot run test in parallel, skip parallel")
 		}
 	}()
-	t.Parallel()
+	t.T().Parallel()
 }
 
 func setupRetryLogic(opts terraform.Options) terraform.Options {
@@ -105,7 +106,7 @@ func unwrap(t interface{}) interface{} {
 	return t.(repositoryTag).RepositoryTag
 }
 
-func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
+func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
 	if currentMajorVer == 0 {
 		return SkipV0Error
 	}
@@ -134,7 +135,7 @@ func moduleUpgrade(t *testing.T, owner string, repo string, moduleFolderRelative
 	return diffTwoVersions(t, opts, tmpTestDir, newModulePath)
 }
 
-func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir string, newModulePath string) error {
+func diffTwoVersions(t *T, opts terraform.Options, originTerraformDir string, newModulePath string) error {
 	opts.TerraformDir = originTerraformDir
 	defer destroy(t, opts)
 	initAndApply(t, &opts)
@@ -142,7 +143,7 @@ func diffTwoVersions(t *testing.T, opts terraform.Options, originTerraformDir st
 	return initAndPlanAndIdempotentAtEasyMode(t, opts)
 }
 
-var initAndPlanAndIdempotentAtEasyMode = func(t *testing.T, opts terraform.Options) error {
+var initAndPlanAndIdempotentAtEasyMode = func(t *T, opts terraform.Options) error {
 	opts.PlanFilePath = filepath.Join(opts.TerraformDir, "tf.plan")
 	opts.Logger = logger.Discard
 	exitCode := initAndPlanWithExitCode(t, &opts)
@@ -172,7 +173,7 @@ func noChange(changes map[string]*tfjson.ResourceChange) bool {
 	})
 }
 
-func overrideModuleSourceToCurrentPath(t *testing.T, moduleDir string, currentModulePath string) {
+func overrideModuleSourceToCurrentPath(t *T, moduleDir string, currentModulePath string) {
 	require.NoError(t, rewriteHcl(moduleDir, currentModulePath))
 }
 

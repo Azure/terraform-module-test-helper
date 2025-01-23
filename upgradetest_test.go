@@ -21,7 +21,7 @@ func TestModuleUpgradeTest(t *testing.T) {
 	stub.Stub(&cloneGithubRepo, func(owner string, repo string, tag *string) (string, error) {
 		return "./", nil
 	})
-	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade/example/version_upgrade", "../../../after_upgrade", terraform.Options{Upgrade: true}, 1)
+	err := moduleUpgrade(newT(t), "lonegunmanb", "terraform-module-test-helper", "example/upgrade/example/version_upgrade", "../../../after_upgrade", terraform.Options{Upgrade: true}, 1)
 	if err == nil {
 		assert.FailNow(t, "expect test failure, but test success")
 	}
@@ -38,7 +38,7 @@ func TestModuleUpgradeTestShouldSkipV0(t *testing.T) {
 	stub.Stub(&cloneGithubRepo, func(owner string, repo string, tag *string) (string, error) {
 		return "./", nil
 	})
-	err := moduleUpgrade(t, "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 0)
+	err := moduleUpgrade(newT(t), "lonegunmanb", "terraform-module-test-helper", "example/upgrade", "./", terraform.Options{Upgrade: true}, 0)
 	assert.Equal(t, SkipV0Error, err)
 }
 
@@ -134,7 +134,7 @@ func TestNoValidVersion(t *testing.T) {
 
 func TestAddNewOutputShouldNotFailTheTest(t *testing.T) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, "./example/output_upgrade", "test")
-	err := diffTwoVersions(t, terraform.Options{
+	err := diffTwoVersions(newT(t), terraform.Options{
 		Upgrade: true,
 	}, tmpDir, "../after")
 	assert.Nil(t, err)
@@ -142,7 +142,7 @@ func TestAddNewOutputShouldNotFailTheTest(t *testing.T) {
 
 func TestNoChange(t *testing.T) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, "./example/output_upgrade", "test")
-	err := diffTwoVersions(t, terraform.Options{
+	err := diffTwoVersions(newT(t), terraform.Options{
 		Upgrade: true,
 	}, tmpDir, "../before")
 	assert.Nil(t, err)
