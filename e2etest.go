@@ -30,7 +30,7 @@ var initLock = &sync.Mutex{}
 type TerraformOutput = map[string]interface{}
 
 type testExecutor interface {
-	TearDown(t *T, rootDir string, modulePath string)
+	TearDown(t testingT, rootDir string, modulePath string)
 	Logger() logger.TestLogger
 }
 
@@ -38,7 +38,7 @@ var _ testExecutor = e2eTestExecutor{}
 
 type e2eTestExecutor struct{}
 
-func (e2eTestExecutor) TearDown(t *T, rootDir string, modulePath string) {
+func (e2eTestExecutor) TearDown(t testingT, rootDir string, modulePath string) {
 	s := SuccessTestVersionSnapshot(rootDir, modulePath)
 	if t.Failed() {
 		s = FailedTestVersionSnapshot(rootDir, modulePath, t.ErrorMessage())
@@ -55,15 +55,15 @@ func RunE2ETest(t *testing.T, moduleRootPath, exampleRelativePath string, option
 	runE2ETest(newT(t), moduleRootPath, exampleRelativePath, option, assertion)
 }
 
-func runE2ETest(t *T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	t.initAndApplyAndIdempotentTest(moduleRootPath, exampleRelativePath, option, false, false, assertion, e2eTestExecutor{})
+func runE2ETest(t testingT, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
+	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, false, false, assertion, e2eTestExecutor{})
 }
 
 func RunE2ETestWithOption(t *testing.T, moduleRootPath, exampleRelativePath string, testOption TestOptions) {
-	newT(t).initAndApplyAndIdempotentTest(moduleRootPath, exampleRelativePath, testOption.TerraformOptions, false, testOption.SkipIdempotentCheck, testOption.Assertion, e2eTestExecutor{})
+	initAndApplyAndIdempotentTest(newT(t), moduleRootPath, exampleRelativePath, testOption.TerraformOptions, false, testOption.SkipIdempotentCheck, testOption.Assertion, e2eTestExecutor{})
 }
 
-func (t *T) initAndApplyAndIdempotentTest(moduleRootPath string, exampleRelativePath string, option terraform.Options, skipDestroy bool, skipCheckIdempotent bool, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
+func initAndApplyAndIdempotentTest(t testingT, moduleRootPath string, exampleRelativePath string, option terraform.Options, skipDestroy bool, skipCheckIdempotent bool, assertion func(*testing.T, TerraformOutput), executor testExecutor) {
 	tryParallel(t)
 	defer executor.TearDown(t, moduleRootPath, exampleRelativePath)
 	testDir := filepath.Join(moduleRootPath, exampleRelativePath)
@@ -99,7 +99,7 @@ func (t *T) initAndApplyAndIdempotentTest(moduleRootPath string, exampleRelative
 	}
 }
 
-func copyTerraformFolderToTemp(t *T, moduleRootPath string, exampleRelativePath string) string {
+func copyTerraformFolderToTemp(t testingT, moduleRootPath string, exampleRelativePath string) string {
 	unlock := copyLock.Lock(exampleRelativePath)
 	defer unlock()
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, moduleRootPath, exampleRelativePath)
@@ -117,7 +117,7 @@ func tfInit(t terratest.TestingT, options *terraform.Options) {
 	terraform.Init(t, options)
 }
 
-func destroy(t *T, option terraform.Options) {
+func destroy(t testingT, option terraform.Options) {
 	path := option.TerraformDir
 	if !files.IsExistingDir(path) || !files.FileExists(filepath.Join(path, "terraform.tfstate")) {
 		return
