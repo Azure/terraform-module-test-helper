@@ -2,11 +2,11 @@ package terraform_module_test_helper
 
 import (
 	"fmt"
+	terratest "github.com/gruntwork-io/terratest/modules/testing"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/files"
@@ -18,6 +18,8 @@ import (
 var initE = terraform.InitE
 var runTerraformCommandE = terraform.RunTerraformCommandE
 var recordFileLocks = &KeyedMutex{}
+
+const NoErrorMessage = "No error was found."
 
 type KeyedMutex struct {
 	mutexes sync.Map // Zero value is empty and ready for use
@@ -59,6 +61,10 @@ func FailedTestVersionSnapshot(rootFolder, exampleRelativePath, errMsg string) *
 }
 
 func (s *TestVersionSnapshot) ToString() string {
+	errorMsg := s.ErrorMsg
+	if s.Success {
+		errorMsg = NoErrorMessage
+	}
 	return fmt.Sprintf(`## %s
 
 Success: %t
@@ -73,10 +79,10 @@ Success: %t
 
 ---
 
-`, s.Time.Format(time.RFC822), s.Success, s.Versions, s.ErrorMsg)
+`, s.Time.Format(time.RFC822), s.Success, s.Versions, errorMsg)
 }
 
-func (s *TestVersionSnapshot) Save(t *testing.T) error {
+func (s *TestVersionSnapshot) Save(t terratest.TestingT) error {
 	path, err := filepath.Abs(filepath.Clean(filepath.Join(s.ModuleRootFolder, s.SubModuleRelativeFolder, "TestRecord.md.tmp")))
 	if err != nil {
 		return err
@@ -149,7 +155,7 @@ func writeStringToFile(filePath, str string) error {
 	return err
 }
 
-func (s *TestVersionSnapshot) load(t *testing.T) {
+func (s *TestVersionSnapshot) load(t terratest.TestingT) {
 	tmpDir := test_structure.CopyTerraformFolderToTemp(t, s.ModuleRootFolder, s.SubModuleRelativeFolder)
 	defer func() {
 		_ = os.RemoveAll(tmpDir)

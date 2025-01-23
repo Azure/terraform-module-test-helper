@@ -39,6 +39,7 @@ func TestVersionSnapshotToString(t *testing.T) {
 	require.Equal(t, snapshot.Time.Format(time.RFC822), strings.TrimPrefix(title, "## "))
 	require.Contains(t, s, "Success: true")
 	require.Contains(t, s, snapshot.Versions)
+	require.Contains(t, s, NoErrorMessage)
 }
 
 func TestOutputNewTestVersionSnapshot(t *testing.T) {

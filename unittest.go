@@ -11,12 +11,12 @@ var _ testExecutor = unitTestExecutor{}
 
 type unitTestExecutor struct{}
 
-func (u unitTestExecutor) TearDown(t *testing.T, rootDir string, modulePath string) {}
+func (u unitTestExecutor) TearDown(t *T, rootDir string, modulePath string) {}
 
 func (u unitTestExecutor) Logger() logger.TestLogger {
 	return logger.Discard
 }
 
 func RunUnitTest(t *testing.T, moduleRootPath, exampleRelativePath string, option terraform.Options, assertion func(*testing.T, TerraformOutput)) {
-	initAndApplyAndIdempotentTest(t, moduleRootPath, exampleRelativePath, option, true, true, assertion, unitTestExecutor{})
+	newT(t).initAndApplyAndIdempotentTest(moduleRootPath, exampleRelativePath, option, true, true, assertion, unitTestExecutor{})
 }
