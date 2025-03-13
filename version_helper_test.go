@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -93,7 +94,7 @@ func TestVersionSnapshotRecord_versionCommandErrorShouldReturnVersionCommandErro
 	})
 	defer stub.Reset()
 	stub.Stub(&runTerraformCommandE, func(terratest.TestingT, *terraform.Options, ...string) (string, error) {
-		return expectedOutput, fmt.Errorf(expectedOutput)
+		return expectedOutput, errors.New(expectedOutput)
 	})
 	s := SuccessTestVersionSnapshot(".", filepath.Join("example", "basic"))
 	s.load(t)
