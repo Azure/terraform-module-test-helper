@@ -106,15 +106,19 @@ func unwrap(t interface{}) interface{} {
 	return t.(repositoryTag).RepositoryTag
 }
 
-func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
-	if currentMajorVer == 0 {
+func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing ...bool) error {
+	allowV0 := false
+	if len(allowV0Testing) > 0 {
+		allowV0 = allowV0Testing[0]
+  }
+	if !allowV0 && currentMajorVer == 0 {
 		return SkipV0Error
 	}
 	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
 	if err != nil {
 		return err
 	}
-	if semver.Major(latestTag) == "v0" {
+	if !allowV0 && semver.Major(latestTag) == "v0" {
 		return SkipV0Error
 	}
 	tmpDirForTag, err := cloneGithubRepo(owner, repo, &latestTag)
