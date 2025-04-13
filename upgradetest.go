@@ -35,16 +35,37 @@ type repositoryTag struct {
 }
 
 //goland:noinspection GoUnusedExportedFunction
-func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
+func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool, streamOutput ...bool) {
 	wrappedT := newT(t)
 	tryParallel(wrappedT)
-	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", owner, repo, moduleFolderRelativeToRoot))
-	l := NewMemoryLogger()
-	defer func() { _ = l.Close() }()
-	opts.Logger = logger.New(l)
+	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, ", owner, repo, moduleFolderRelativeToRoot))
+
+	// Determine if streaming output is enabled (defaults to false)
+	stream := false
+	if len(streamOutput) > 0 && streamOutput[0] {
+		stream = true
+	}
+
+	if stream {
+		// For streaming output, directly log to stdout
+		opts.Logger = logger.Default
+	} else {
+		// For buffered output, create a logger instance but keep it for later
+		logger.Log(wrappedT, "Since we're running tests in parallel, the test log will be buffered and output to stdout after the tests are finished.")
+		memLogger := NewMemoryLogger()
+		// Important: Use logger.New to wrap our StreamLogger to avoid type incompatibility
+		opts.Logger = logger.New(memLogger)
+		// Ensure we flush the logs at the end
+		defer func() { 
+			if err := memLogger.Close(); err != nil {
+				t.Logf("Error closing memory logger: %v", err)
+			}
+		}()
+	}
+
 	opts = setupRetryLogic(opts)
 
-	err := moduleUpgrade(wrappedT, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
+	err := moduleUpgrade(wrappedT, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer, allowV0Testing)
 	if err == CannotTestError || err == SkipV0Error {
 		t.Skip(err.Error())
 	}
@@ -106,19 +127,15 @@ func unwrap(t interface{}) interface{} {
 	return t.(repositoryTag).RepositoryTag
 }
 
-func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing ...bool) error {
-	allowV0 := false
-	if len(allowV0Testing) > 0 {
-		allowV0 = allowV0Testing[0]
-  }
-	if !allowV0 && currentMajorVer == 0 {
+func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool) error {
+	if !allowV0Testing && currentMajorVer == 0 {
 		return SkipV0Error
 	}
 	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
 	if err != nil {
 		return err
 	}
-	if !allowV0 && semver.Major(latestTag) == "v0" {
+	if !allowV0Testing && semver.Major(latestTag) == "v0" {
 		return SkipV0Error
 	}
 	tmpDirForTag, err := cloneGithubRepo(owner, repo, &latestTag)
