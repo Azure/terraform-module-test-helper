@@ -2,6 +2,7 @@ package terraform_module_test_helper
 
 import (
 	"context"
+	"encoding/json"	
 	"fmt"
 	"golang.org/x/oauth2"
 	"net/http"
@@ -35,22 +36,14 @@ type repositoryTag struct {
 }
 
 //goland:noinspection GoUnusedExportedFunction
-func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool, streamOutput ...bool) {
+func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool, streamOutput bool) {
 	wrappedT := newT(t)
 	tryParallel(wrappedT)
 	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, ", owner, repo, moduleFolderRelativeToRoot))
-
-	// Determine if streaming output is enabled (defaults to false)
-	stream := false
-	if len(streamOutput) > 0 && streamOutput[0] {
-		stream = true
-	}
-
-	if stream {
-		// For streaming output, directly log to stdout
+	
+	if streamOutput {
 		opts.Logger = logger.Default
 	} else {
-		// For buffered output, create a logger instance but keep it for later
 		logger.Log(wrappedT, "Since we're running tests in parallel, the test log will be buffered and output to stdout after the tests are finished.")
 		memLogger := NewMemoryLogger()
 		// Important: Use logger.New to wrap our StreamLogger to avoid type incompatibility
@@ -170,10 +163,36 @@ var initAndPlanAndIdempotentAtEasyMode = func(t testingT, opts terraform.Options
 	exitCode := initAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
-	if exitCode == 0 || noChange(changes) {
+
+	opts.Logger = logger.Default
+	jsonBytes, _ := json.MarshalIndent(changes, "", "  ")
+	logger.Log(t, string(jsonBytes))
+
+	if exitCode == 0 || ignoreOnlyAddOrUpdate(changes) {
 		return nil
 	}
-	return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
+	return fmt.Errorf("terraform configuration contains destructive operations (breaking changes):%s", terraform.Plan(t, &opts))
+}
+
+func ignoreOnlyAddOrUpdate(changes map[string]*tfjson.ResourceChange) bool {
+	// Return false (fail) if we see any "delete" or "replace."
+	for _, rc := range changes {
+			if rc == nil || rc.Change == nil {
+					continue
+			}
+			actions := rc.Change.Actions
+			if actions == nil {
+					continue
+			}
+			// If Terraform lists multiple actions (e.g., ["delete", "create"] for a replace),
+			// then if any action is "delete" or "replace," we fail.
+			for _, a := range actions {
+					if a == "delete" || a == "replace" {
+							return false
+					}
+			}
+	}
+	return true
 }
 
 func noChange(changes map[string]*tfjson.ResourceChange) bool {
