@@ -2,7 +2,6 @@ package terraform_module_test_helper
 
 import (
 	"context"
-	"encoding/json"	
 	"fmt"
 	"golang.org/x/oauth2"
 	"net/http"
@@ -36,29 +35,16 @@ type repositoryTag struct {
 }
 
 //goland:noinspection GoUnusedExportedFunction
-func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool, streamOutput bool) {
+func ModuleUpgradeTest(t *testing.T, owner, repo, moduleFolderRelativeToRoot, currentModulePath string, opts terraform.Options, currentMajorVer int) {
 	wrappedT := newT(t)
 	tryParallel(wrappedT)
-	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, ", owner, repo, moduleFolderRelativeToRoot))
-	
-	if streamOutput {
-		opts.Logger = logger.Default
-	} else {
-		logger.Log(wrappedT, "Since we're running tests in parallel, the test log will be buffered and output to stdout after the tests are finished.")
-		memLogger := NewMemoryLogger()
-		// Important: Use logger.New to wrap our StreamLogger to avoid type incompatibility
-		opts.Logger = logger.New(memLogger)
-		// Ensure we flush the logs at the end
-		defer func() { 
-			if err := memLogger.Close(); err != nil {
-				t.Logf("Error closing memory logger: %v", err)
-			}
-		}()
-	}
-
+	logger.Log(wrappedT, fmt.Sprintf("===> Starting test for %s/%s/examples/%s, since we're running tests in parallel, the test log will be buffered and output to stdout after the test was finished.", owner, repo, moduleFolderRelativeToRoot))
+	l := NewMemoryLogger()
+	defer func() { _ = l.Close() }()
+	opts.Logger = logger.New(l)
 	opts = setupRetryLogic(opts)
 
-	err := moduleUpgrade(wrappedT, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer, allowV0Testing)
+	err := moduleUpgrade(wrappedT, owner, repo, moduleFolderRelativeToRoot, currentModulePath, retryableOptions(t, opts), currentMajorVer)
 	if err == CannotTestError || err == SkipV0Error {
 		t.Skip(err.Error())
 	}
@@ -120,15 +106,15 @@ func unwrap(t interface{}) interface{} {
 	return t.(repositoryTag).RepositoryTag
 }
 
-func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int, allowV0Testing bool) error {
-	if !allowV0Testing && currentMajorVer == 0 {
+func moduleUpgrade(t *T, owner string, repo string, moduleFolderRelativeToRoot string, newModulePath string, opts terraform.Options, currentMajorVer int) error {
+	if currentMajorVer == 0 {
 		return SkipV0Error
 	}
 	latestTag, err := getLatestTag(owner, repo, currentMajorVer)
 	if err != nil {
 		return err
 	}
-	if !allowV0Testing && semver.Major(latestTag) == "v0" {
+	if semver.Major(latestTag) == "v0" {
 		return SkipV0Error
 	}
 	tmpDirForTag, err := cloneGithubRepo(owner, repo, &latestTag)
@@ -163,36 +149,10 @@ var initAndPlanAndIdempotentAtEasyMode = func(t testingT, opts terraform.Options
 	exitCode := initAndPlanWithExitCode(t, &opts)
 	plan := terraform.InitAndPlanAndShowWithStruct(t, &opts)
 	changes := plan.ResourceChangesMap
-
-	opts.Logger = logger.Default
-	jsonBytes, _ := json.MarshalIndent(changes, "", "  ")
-	logger.Log(t, string(jsonBytes))
-
-	if exitCode == 0 || ignoreOnlyAddOrUpdate(changes) {
+	if exitCode == 0 || noChange(changes) {
 		return nil
 	}
-	return fmt.Errorf("terraform configuration contains destructive operations (breaking changes):%s", terraform.Plan(t, &opts))
-}
-
-func ignoreOnlyAddOrUpdate(changes map[string]*tfjson.ResourceChange) bool {
-	// Return false (fail) if we see any "delete" or "replace."
-	for _, rc := range changes {
-			if rc == nil || rc.Change == nil {
-					continue
-			}
-			actions := rc.Change.Actions
-			if actions == nil {
-					continue
-			}
-			// If Terraform lists multiple actions (e.g., ["delete", "create"] for a replace),
-			// then if any action is "delete" or "replace," we fail.
-			for _, a := range actions {
-					if a == "delete" || a == "replace" {
-							return false
-					}
-			}
-	}
-	return true
+	return fmt.Errorf("terraform configuration not idempotent:%s", terraform.Plan(t, &opts))
 }
 
 func noChange(changes map[string]*tfjson.ResourceChange) bool {
