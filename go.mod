@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-getter/v2 v2.2.3
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20250203082807-efaa306e97b4
-	github.com/hashicorp/terraform-json v0.25.0
+	github.com/hashicorp/terraform-json v0.26.0
 	github.com/lonegunmanb/tfmodredirector v0.1.0
 	github.com/prashantv/gostub v1.1.0
 	github.com/r3labs/diff/v3 v3.0.1
