@@ -1,6 +1,6 @@
 module github.com/Azure/terraform-module-test-helper
 
-go 1.23.0
+go 1.23.5
 
 toolchain go1.24.1
 
@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/terraform-json v0.26.0
 	github.com/lonegunmanb/tfmodredirector v0.1.0
 	github.com/prashantv/gostub v1.1.0
-	github.com/r3labs/diff/v3 v3.0.1
+	github.com/r3labs/diff/v3 v3.0.2
 	github.com/spf13/afero v1.14.0
 	github.com/stretchr/testify v1.11.0
 	github.com/thanhpk/randstr v1.0.6
@@ -116,7 +116,7 @@ require (
 	github.com/tmccombs/hcl2json v0.6.4 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/urfave/cli/v2 v2.10.3 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/zclconf/go-cty v1.16.3 // indirect
